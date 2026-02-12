@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Library System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Roboto', sans-serif; }
+  body { background:#F0F4FF; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+
+  .form-container {
+    background:white;
+    padding:50px;
+    border-radius:25px;
+    box-shadow:0 25px 60px rgba(0,0,0,0.1);
+    width:100%; max-width:400px;
+    text-align:center;
+  }
+  h1 { color:#2563EB; margin-bottom:25px; }
+  label { display:block; margin:12px 0 6px; font-weight:bold; text-align:left; color:#1E3A8A; }
+  input { width:100%; padding:14px; margin-bottom:15px; border-radius:12px; border:1px solid #ccc; }
+  .btn-primary {
+    width:100%;
+    padding:15px;
+    border-radius:50px;
+    border:none;
+    background:#F97316;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    transition:0.3s;
+  }
+  .btn-primary:hover { background:#FFB366; color:#111827; }
+  a { color:#2563EB; text-decoration:none; }
+  a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+  <div class="form-container">
+    <h1>Login</h1>
+    <form id="loginForm">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required>
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required>
+      <button type="submit" class="btn-primary">Login</button>
+    </form>
+    <p>Don't have an account? <a href="/register">Register here</a></p>
+    <p><a href="/">Back to Home</a></p>
+  </div>
+<script>
+const loginForm = document.getElementById("loginForm");
+
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const username = loginForm.username.value;
+  const password = loginForm.password.value;
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      localStorage.setItem("token", data.token); 
+      alert("Login successful!");
+      // Redirect by role
+      if (data.role === "ADMIN") window.location.href = "/dashboard/admin";
+      else if (data.role === "LIBRARIAN") window.location.href = "/dashboard/librarian";
+      else window.location.href = "/member.html"; // ✅ MEMBER dashboard
+    } else {
+      alert(data.message || data.error); 
+    }
+  } catch (err) {
+    alert("Something went wrong. Try again.");
+    console.error(err);
+  }
+});
+
+
+</script>
+
+
+
+</body>
+</html>

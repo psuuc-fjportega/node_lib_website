@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Librarian Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Roboto', sans-serif; }
+  body { background: linear-gradient(to right, #f9d423, #ff4e50); color:#fff; min-height:100vh; display:flex; flex-direction:column; }
+  header { text-align:center; padding:2rem; }
+  h1 { margin-bottom:0.5rem; }
+  main { display:flex; justify-content:center; flex-wrap:wrap; gap:1rem; padding:2rem; }
+  .card { background:rgba(255,255,255,0.1); padding:2rem; border-radius:12px; min-width:250px; text-align:center; transition:transform 0.2s; cursor:pointer; }
+  .card:hover { transform: scale(1.05); }
+  .btn-logout { background:#ff4d6d; color:#fff; border:none; padding:0.6rem 1.2rem; border-radius:8px; cursor:pointer; margin-top:1rem; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Welcome, Librarian!</h1>
+    <p>Manage books and assist members</p>
+    <button class="btn-logout" id="logoutBtn">Logout</button>
+  </header>
+  <main>
+    <div class="card" onclick="window.location.href='/books'">
+      <h2>Manage Books</h2>
+      <p>Add, edit, or remove books from the library.</p>
+    </div>
+    <div class="card" onclick="window.location.href='/borrows'">
+      <h2>All Borrows</h2>
+      <p>View all borrowed books and due dates.</p>
+    </div>
+  </main>
+
+<script>
+// Protect page: redirect if not logged in
+const token = localStorage.getItem("token");
+if (!token) {
+  alert("You must log in first!");
+  window.location.href = "/login.html";
+}
+
+// Logout
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  localStorage.removeItem("token");
+  window.location.href = "/login.html";
+});
+</script>
+</body>
+</html>
