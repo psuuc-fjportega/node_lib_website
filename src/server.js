@@ -3,12 +3,14 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const path = require("path");
+const userRoutes = require("./routes/user.routes");
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use("/api/users", userRoutes);
 
 // Serve static files
 app.use("/static", express.static(path.join(__dirname, "static")));

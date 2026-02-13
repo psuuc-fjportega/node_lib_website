@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(to right, #1E3A8A, #2563EB);
+  color: white;
+  margin: 0;
+  text-align: center;
+}
+header {
+  padding: 2rem;
+}
+.container {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding: 2rem;
+}
+.card {
+  background: rgba(255,255,255,0.15);
+  padding: 2rem;
+  border-radius: 15px;
+  width: 250px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.card:hover {
+  transform: scale(1.05);
+}
+button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: crimson;
+  color: white;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Admin Dashboard</h1>
+  <p>Full system control</p>
+  <button onclick="logout()">Logout</button>
+</header>
+
+<div class="card" onclick="window.location.href='/manage-users.html'">
+  <h2>Manage Users</h2>
+  <p>View, edit, delete users</p>
+</div>
+
+
+  <div class="card" onclick="alert('System Reports coming next!')">
+    <h2>System Reports</h2>
+    <p>View system statistics</p>
+  </div>
+
+  <div class="card" onclick="window.location.href='/librarian.html'">
+    <h2>View Librarian Panel</h2>
+    <p>Access librarian tools</p>
+  </div>
+</div>
+
+<script>
+// 🔒 Protect page
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+
+if (!token || role !== "ADMIN") {
+  alert("Access denied.");
+  window.location.href = "/login.html";
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  window.location.href = "/login.html";
+}
+</script>
+
+</body>
+</html>

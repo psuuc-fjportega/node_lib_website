@@ -49,6 +49,8 @@
     <p>Don't have an account? <a href="/register">Register here</a></p>
     <p><a href="/">Back to Home</a></p>
   </div>
+
+  
 <script>
 const loginForm = document.getElementById("loginForm");
 
@@ -68,23 +70,35 @@ loginForm.addEventListener("submit", async (e) => {
     const data = await res.json();
 
     if (res.ok) {
-      localStorage.setItem("token", data.token); 
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", data.role);
+
       alert("Login successful!");
-      // Redirect by role
-      if (data.role === "ADMIN") window.location.href = "/dashboard/admin";
-      else if (data.role === "LIBRARIAN") window.location.href = "/dashboard/librarian";
-      else window.location.href = "/member.html"; // ✅ MEMBER dashboard
+
+      // 🔥 Redirect based on role
+      if (data.role === "LIBRARIAN") {
+        window.location.href = "/librarian.html";
+      } 
+      else if (data.role === "ADMIN") {
+        window.location.href = "/admin.html";
+      } 
+      else {
+        window.location.href = "/member.html";
+      }
+
     } else {
-      alert(data.message || data.error); 
+      alert(data.message || "Login failed");
     }
+
   } catch (err) {
-    alert("Something went wrong. Try again.");
     console.error(err);
+    alert("Something went wrong.");
   }
 });
 
 
 </script>
+
 
 
 
