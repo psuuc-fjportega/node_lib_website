@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Books — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
+</head>
+<body>
+
+<nav class="lib-navbar">
+  <a href="/" class="logo">📚 Urdaneta City Library</a>
+  <div class="nav-links">
+    <a href="/librarian.html">Dashboard</a>
+    <span class="user-info" id="userDisplay"></span>
+  </div>
+</nav>
+
+<div class="lib-page">
+  <div class="lib-page-header">
+    <h1>📚 Manage Books</h1>
+    <div class="breadcrumb"><a href="/librarian.html">Librarian Dashboard</a> → Manage Books</div>
+  </div>
+
+  <button class="lib-btn lib-btn-success" onclick="openModal()">+ Add New Book</button>
+
+  <div class="lib-table-wrapper">
+    <table class="lib-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Author</th>
+          <th>Copies (Avail / Total)</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="booksTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal for Add/Edit Book -->
+<div id="bookModal" class="lib-modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="lib-modal">
+    <button class="lib-modal-close" onclick="closeModal()">&times;</button>
+    <h2 id="modalTitle">Add Book</h2>
+    <input type="hidden" id="bookId">
+    <div class="lib-form-group">
+      <label>Title</label>
+      <input type="text" id="title" class="lib-input" placeholder="Book title">
+    </div>
+    <div class="lib-form-group">
+      <label>Author</label>
+      <input type="text" id="author" class="lib-input" placeholder="Author name">
+    </div>
+    <div class="lib-form-group">
+      <label>Description</label>
+      <textarea id="description" class="lib-input" rows="3" placeholder="Short description"></textarea>
+    </div>
+    <div class="lib-form-group">
+      <label>Total Copies</label>
+      <input type="number" id="totalCopies" class="lib-input" min="1" value="1">
+    </div>
+    <div style="display:flex;gap:0.75rem;">
+      <button class="lib-btn lib-btn-primary" onclick="saveBook()" style="flex:1">Save</button>
+      <button class="lib-btn lib-btn-outline" onclick="closeModal()" style="flex:1">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<footer class="lib-footer">
+  <p>&copy; 2026 Urdaneta City Library</p>
+</footer>
+
+<script>
+const token = localStorage.getItem("token");
+if (!token) window.location.href = "/login.html";
+
+const username = localStorage.getItem("username");
+document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
+
+async function fetchBooks() {
+    const res = await fetch("/api/books");
+    const books = await res.json();
+    const tbody = document.getElementById("booksTable");
+    tbody.innerHTML = "";
+    
+    books.forEach(book => {
+        tbody.innerHTML += `
+            <tr>
+                <td><strong>${book.title}</strong></td>
+                <td>${book.author}</td>
+                <td>
+                  <span class="lib-badge ${book.availableCopies > 0 ? 'lib-badge-success' : 'lib-badge-danger'}">
+                    ${book.availableCopies}
+                  </span> / ${book.totalCopies}
+                </td>
+                <td>
+                    <button class="lib-btn lib-btn-primary lib-btn-sm" onclick="editBook('${book._id}', '${book.title.replace(/'/g,"\\'")}', '${book.author.replace(/'/g,"\\'")}', '${(book.description||'').replace(/'/g,"\\'")}', ${book.totalCopies})">Edit</button>
+                    <button class="lib-btn lib-btn-danger lib-btn-sm" onclick="deleteBook('${book._id}')">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function openModal() {
+    document.getElementById("bookModal").classList.add("active");
+    document.getElementById("modalTitle").innerText = "Add Book";
+    document.getElementById("bookId").value = "";
+    document.getElementById("title").value = "";
+    document.getElementById("author").value = "";
+    document.getElementById("description").value = "";
+    document.getElementById("totalCopies").value = "1";
+}
+
+function editBook(id, title, author, desc, copies) {
+    document.getElementById("bookModal").classList.add("active");
+    document.getElementById("modalTitle").innerText = "Edit Book";
+    document.getElementById("bookId").value = id;
+    document.getElementById("title").value = title;
+    document.getElementById("author").value = author;
+    document.getElementById("description").value = desc;
+    document.getElementById("totalCopies").value = copies;
+}
+
+function closeModal() {
+    document.getElementById("bookModal").classList.remove("active");
+}
+
+async function saveBook() {
+    const id = document.getElementById("bookId").value;
+    const title = document.getElementById("title").value;
+    const author = document.getElementById("author").value;
+    const description = document.getElementById("description").value;
+    const totalCopies = document.getElementById("totalCopies").value;
+
+    const method = id ? "PUT" : "POST";
+    const url = id ? "/api/books/" + id : "/api/books";
+
+    const res = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ title, author, description, totalCopies: parseInt(totalCopies) })
+    });
+
+    if (res.ok) { alert("Book saved!"); closeModal(); fetchBooks(); }
+    else { const data = await res.json(); alert(data.message || "Error saving book"); }
+}
+
+async function deleteBook(id) {
+    if(!confirm("Are you sure?")) return;
+    const res = await fetch("/api/books/" + id, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (res.ok) fetchBooks();
+    else alert("Failed to delete book");
+}
+
+fetchBooks();
+</script>
+
+</body>
+</html>

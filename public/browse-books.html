@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browse Books — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
+</head>
+<body>
+
+<nav class="lib-navbar">
+  <a href="/" class="logo">📚 Urdaneta City Library</a>
+  <div class="nav-links">
+    <a href="/member.html">Dashboard</a>
+    <span class="user-info" id="userDisplay"></span>
+  </div>
+</nav>
+
+<div class="lib-page">
+  <div class="lib-page-header">
+    <h1>🔍 Browse Books</h1>
+    <div class="breadcrumb"><a href="/member.html">Member Dashboard</a> → Browse Books</div>
+  </div>
+
+  <div class="lib-filters">
+    <input type="text" id="searchInput" class="lib-input" placeholder="Search by title or author...">
+    <select id="categorySelect" class="lib-input" style="max-width:180px;">
+      <option value="">All Categories</option>
+      <option value="Fiction">Fiction</option>
+      <option value="Non-Fiction">Non-Fiction</option>
+      <option value="Sci-Fi">Sci-Fi</option>
+      <option value="History">History</option>
+    </select>
+    <select id="availabilitySelect" class="lib-input" style="max-width:180px;">
+      <option value="">All Status</option>
+      <option value="true">Available Only</option>
+    </select>
+    <button class="lib-btn lib-btn-primary" onclick="fetchBooks()">Search</button>
+  </div>
+
+  <div class="lib-book-grid" id="booksGrid">
+    <p style="color:var(--text-light);">Loading books...</p>
+  </div>
+</div>
+
+<footer class="lib-footer">
+  <p>&copy; 2026 Urdaneta City Library</p>
+</footer>
+
+<script>
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+const username = localStorage.getItem("username");
+if (!token) window.location.href = "/login.html";
+
+document.getElementById("userDisplay").textContent = username ? `👤 ${username} (${role})` : "";
+
+async function fetchBooks() {
+    const search = document.getElementById("searchInput").value;
+    const category = document.getElementById("categorySelect").value;
+    const availability = document.getElementById("availabilitySelect").value;
+
+    let query = `?search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}&availability=${availability}`;
+
+    const res = await fetch("/api/books" + query, {
+        headers: { "Authorization": "Bearer " + localStorage.getItem("token") }
+    });
+    const books = await res.json();
+    
+    const grid = document.getElementById("booksGrid");
+    grid.innerHTML = "";
+    
+    if (books.length === 0) {
+        grid.innerHTML = "<p style='color:var(--text-muted);grid-column:1/-1;text-align:center;padding:2rem;'>No books found.</p>";
+        return;
+    }
+
+    books.forEach(book => {
+        const isAvailable = book.availableCopies > 0;
+        grid.innerHTML += `
+            <div class="lib-book-card">
+                <div class="book-icon">📖</div>
+                <h3>${book.title}</h3>
+                <p class="book-author">${book.author}</p>
+                <p class="book-category">${book.category || 'General'}</p>
+                <p class="book-status ${isAvailable ? 'available' : 'unavailable'}">
+                    ${isAvailable ? '✓ Available' : '✗ Out of Stock'} (${book.availableCopies}/${book.totalCopies})
+                </p>
+                ${isAvailable 
+                    ? `<button class="lib-btn lib-btn-primary lib-btn-sm" onclick="borrowBook('${book._id}')">Borrow</button>` 
+                    : `<button class="lib-btn lib-btn-warning lib-btn-sm" onclick="reserveBook('${book._id}')">Reserve</button>`}
+            </div>
+        `;
+    });
+}
+
+async function borrowBook(bookId) {
+    if(!confirm("Borrow this book?")) return;
+    
+    const res = await fetch("/api/borrows", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + localStorage.getItem("token")
+        },
+        body: JSON.stringify({ bookId })
+    });
+    
+    const data = await res.json();
+    if(res.ok) {
+        alert("Book borrowed successfully! Due: " + new Date(data.dueDate).toLocaleDateString());
+        fetchBooks();
+    } else {
+        alert(data.message || "Failed to borrow");
+    }
+}
+
+async function reserveBook(bookId) {
+    if(!confirm("Reserve this book?")) return;
+
+    const res = await fetch("/api/reservations", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + localStorage.getItem("token")
+        },
+        body: JSON.stringify({ bookId })
+    });
+
+    const data = await res.json();
+    if(res.ok) {
+        alert("Reservation placed successfully!");
+    } else {
+        alert(data.message || "Failed to reserve");
+    }
+}
+
+fetchBooks();
+</script>
+
+</body>
+</html>

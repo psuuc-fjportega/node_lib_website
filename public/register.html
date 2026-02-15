@@ -3,77 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Register - Library System</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-* { margin:0; padding:0; box-sizing:border-box; font-family:'Roboto', sans-serif; }
-body { background:#F0F4FF; display:flex; justify-content:center; align-items:center; min-height:100vh; }
-
-.form-container {
-  background:white;
-  padding:50px;
-  border-radius:25px;
-  box-shadow:0 25px 60px rgba(0,0,0,0.1);
-  width:100%; max-width:400px;
-  text-align:center;
-}
-h1 { color:#2563EB; margin-bottom:25px; }
-label { display:block; margin:12px 0 6px; font-weight:bold; text-align:left; color:#1E3A8A; }
-input, select { width:100%; padding:14px; margin-bottom:15px; border-radius:12px; border:1px solid #ccc; }
-.btn-primary {
-  width:100%;
-  padding:15px;
-  border-radius:50px;
-  border:none;
-  background:#F97316;
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
-  transition:0.3s;
-}
-.btn-primary:hover { background:#FFB366; color:#111827; }
-a { color:#2563EB; text-decoration:none; }
-a:hover { text-decoration:underline; }
-</style>
+<title>Register — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
 </head>
 <body>
-  <div class="form-container">
-    <h1>Register</h1>
-    <form id="registerForm">
-      <label for="username">Username</label>
-      <input type="text" id="username" name="username" required>
 
-      <label for="password">Password</label>
-      <input type="password" id="password" name="password" required>
-
-      <label for="role">Role</label>
-      <select id="role" name="role" required>
-        <option value="MEMBER" selected>Member</option>
-        <option value="LIBRARIAN">Librarian</option>
-        <option value="ADMIN">Admin</option>
-      </select>
-
-      <div id="secretCodeContainer" style="display:none;">
-        <label for="secretCode">Secret Code</label>
-        <input type="text" id="secretCode" name="secretCode">
-      </div>
-
-      <button type="submit" class="btn-primary">Register</button>
-    </form>
-    <p>Already have an account? <a href="/login.html">Login here</a></p>
-    <p><a href="/">Back to Home</a></p>
+<div class="lib-auth-page">
+  <!-- Left Panel -->
+  <div class="lib-auth-panel">
+    <div class="auth-icon">📖</div>
+    <div class="auth-quote">"I have always imagined that Paradise will be a kind of library."</div>
+    <div class="auth-quote-author">— Jorge Luis Borges</div>
   </div>
+
+  <!-- Right Panel — Form -->
+  <div class="lib-auth-form">
+    <div class="lib-auth-box">
+      <h1>Create Account</h1>
+      <p class="auth-subtitle">Join the Urdaneta City Library community</p>
+
+      <form id="registerForm">
+        <div class="lib-form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" class="lib-input" placeholder="Choose a username" required>
+        </div>
+        <div class="lib-form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" class="lib-input" placeholder="Create a password" required>
+        </div>
+        <div class="lib-form-group">
+          <label for="role">Role</label>
+          <select id="role" name="role" class="lib-input" required>
+            <option value="MEMBER" selected>Member</option>
+            <option value="LIBRARIAN">Librarian</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </div>
+
+        <div id="secretCodeContainer" style="display:none;">
+          <div class="lib-form-group">
+            <label for="secretCode">Secret Code</label>
+            <input type="text" id="secretCode" name="secretCode" class="lib-input" placeholder="Enter secret code">
+          </div>
+        </div>
+
+        <button type="submit" class="lib-btn lib-btn-primary" style="width:100%;margin-top:0.5rem;">Create Account</button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a href="/login.html">Login here</a></p>
+        <p style="margin-top:0.5rem;"><a href="/">← Back to Home</a></p>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 const roleSelect = document.getElementById("role");
 const secretContainer = document.getElementById("secretCodeContainer");
 
 roleSelect.addEventListener("change", () => {
-  if (roleSelect.value === "ADMIN" || roleSelect.value === "LIBRARIAN") {
-    secretContainer.style.display = "block";
-  } else {
-    secretContainer.style.display = "none";
-  }
+  secretContainer.style.display = (roleSelect.value === "ADMIN" || roleSelect.value === "LIBRARIAN") ? "block" : "none";
 });
 
 const registerForm = document.getElementById("registerForm");

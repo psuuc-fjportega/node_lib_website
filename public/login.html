@@ -3,54 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login - Library System</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-  * { margin:0; padding:0; box-sizing:border-box; font-family:'Roboto', sans-serif; }
-  body { background:#F0F4FF; display:flex; justify-content:center; align-items:center; min-height:100vh; }
-
-  .form-container {
-    background:white;
-    padding:50px;
-    border-radius:25px;
-    box-shadow:0 25px 60px rgba(0,0,0,0.1);
-    width:100%; max-width:400px;
-    text-align:center;
-  }
-  h1 { color:#2563EB; margin-bottom:25px; }
-  label { display:block; margin:12px 0 6px; font-weight:bold; text-align:left; color:#1E3A8A; }
-  input { width:100%; padding:14px; margin-bottom:15px; border-radius:12px; border:1px solid #ccc; }
-  .btn-primary {
-    width:100%;
-    padding:15px;
-    border-radius:50px;
-    border:none;
-    background:#F97316;
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
-    transition:0.3s;
-  }
-  .btn-primary:hover { background:#FFB366; color:#111827; }
-  a { color:#2563EB; text-decoration:none; }
-  a:hover { text-decoration:underline; }
-</style>
+<title>Login — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
 </head>
 <body>
-  <div class="form-container">
-    <h1>Login</h1>
-    <form id="loginForm">
-      <label for="username">Username</label>
-      <input type="text" id="username" name="username" required>
-      <label for="password">Password</label>
-      <input type="password" id="password" name="password" required>
-      <button type="submit" class="btn-primary">Login</button>
-    </form>
-    <p>Don't have an account? <a href="/register">Register here</a></p>
-    <p><a href="/">Back to Home</a></p>
+
+<div class="lib-auth-page">
+  <!-- Left Panel -->
+  <div class="lib-auth-panel">
+    <div class="auth-icon">📚</div>
+    <div class="auth-quote">"The only thing that you absolutely have to know, is the location of the library."</div>
+    <div class="auth-quote-author">— Albert Einstein</div>
   </div>
 
-  
+  <!-- Right Panel — Form -->
+  <div class="lib-auth-form">
+    <div class="lib-auth-box">
+      <h1>Welcome Back</h1>
+      <p class="auth-subtitle">Sign in to access the library system</p>
+
+      <form id="loginForm">
+        <div class="lib-form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" class="lib-input" placeholder="Enter your username" required>
+        </div>
+        <div class="lib-form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" class="lib-input" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" class="lib-btn lib-btn-primary" style="width:100%;margin-top:0.5rem;">Sign In</button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Don't have an account? <a href="/register">Register here</a></p>
+        <p style="margin-top:0.5rem;"><a href="/">← Back to Home</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const loginForm = document.getElementById("loginForm");
 
@@ -70,37 +61,28 @@ loginForm.addEventListener("submit", async (e) => {
     const data = await res.json();
 
     if (res.ok) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("username");
+
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
+      localStorage.setItem("username", username);
 
       alert("Login successful!");
 
-      // 🔥 Redirect based on role
-      if (data.role === "LIBRARIAN") {
-        window.location.href = "/librarian.html";
-      } 
-      else if (data.role === "ADMIN") {
-        window.location.href = "/admin.html";
-      } 
-      else {
-        window.location.href = "/member.html";
-      }
-
+      if (data.role === "LIBRARIAN") window.location.href = "/librarian.html";
+      else if (data.role === "ADMIN") window.location.href = "/admin.html";
+      else window.location.href = "/member.html";
     } else {
       alert(data.message || "Login failed");
     }
-
   } catch (err) {
     console.error(err);
     alert("Something went wrong.");
   }
 });
-
-
 </script>
-
-
-
 
 </body>
 </html>

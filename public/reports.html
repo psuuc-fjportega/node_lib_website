@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Reports — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
+</head>
+<body>
+
+<nav class="lib-navbar">
+  <a href="/" class="logo">📚 Urdaneta City Library</a>
+  <div class="nav-links">
+    <a href="/admin.html">Dashboard</a>
+    <span class="user-info" id="userDisplay"></span>
+  </div>
+</nav>
+
+<div class="lib-page">
+  <div class="lib-page-header">
+    <h1>📊 System Reports</h1>
+    <div class="breadcrumb"><a href="/admin.html">Admin Dashboard</a> → Reports</div>
+  </div>
+
+  <div class="lib-dash-grid" id="statsGrid">
+    <p style="color:var(--text-light);">Loading statistics...</p>
+  </div>
+</div>
+
+<footer class="lib-footer">
+  <p>&copy; 2026 Urdaneta City Library</p>
+</footer>
+
+<script>
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+const username = localStorage.getItem("username");
+
+if (!token || role !== "ADMIN") {
+    alert("Access denied");
+    window.location.href = "/login.html";
+}
+
+document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
+
+async function fetchStats() {
+    try {
+        const res = await fetch("/api/reports/dashboard-stats", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await res.json();
+        
+        const grid = document.getElementById("statsGrid");
+        grid.innerHTML = `
+            <div class="lib-stat-card">
+                <h3>Total Users</h3>
+                <div class="stat-value">${data.users.total}</div>
+                <small>Admins: ${data.users.admins} · Librarians: ${data.users.librarians}</small>
+            </div>
+            <div class="lib-stat-card">
+                <h3>Total Books</h3>
+                <div class="stat-value">${data.books.total}</div>
+            </div>
+            <div class="lib-stat-card">
+                <h3>Active Borrows</h3>
+                <div class="stat-value">${data.books.borrowed}</div>
+            </div>
+            <div class="lib-stat-card">
+                <h3>Available Books</h3>
+                <div class="stat-value">${data.books.available}</div>
+            </div>
+        `;
+    } catch (err) {
+        console.error(err);
+        alert("Failed to load stats");
+    }
+}
+
+fetchStats();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Borrowing History — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
+</head>
+<body>
+
+<nav class="lib-navbar">
+  <a href="/" class="logo">📚 Urdaneta City Library</a>
+  <div class="nav-links">
+    <a href="/member.html">Dashboard</a>
+    <span class="user-info" id="userDisplay"></span>
+  </div>
+</nav>
+
+<div class="lib-page">
+  <div class="lib-page-header">
+    <h1>📜 My Borrowing History</h1>
+    <div class="breadcrumb"><a href="/member.html">Member Dashboard</a> → My History</div>
+  </div>
+
+  <div class="lib-tabs">
+    <div class="lib-tab active" onclick="showTab('active')">Active Loans</div>
+    <div class="lib-tab" onclick="showTab('history')">History</div>
+    <div class="lib-tab" onclick="showTab('reservations')">Reservations</div>
+  </div>
+
+  <div class="lib-table-wrapper">
+    <table class="lib-table">
+      <thead>
+        <tr id="tableHeaders">
+          <th>Book</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="loansBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer class="lib-footer">
+  <p>&copy; 2026 Urdaneta City Library</p>
+</footer>
+
+<script>
+const token = localStorage.getItem("token");
+if (!token) window.location.href = "/login.html";
+
+const username = localStorage.getItem("username");
+document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
+
+let allLoans = [];
+let myReservations = [];
+
+async function fetchMyLoans() {
+    try {
+        const currentToken = localStorage.getItem("token");
+        const res = await fetch("/api/borrows/my", {
+            headers: { "Authorization": "Bearer " + currentToken }
+        });
+        allLoans = await res.json();
+        
+        const resRes = await fetch("/api/reservations/my", {
+             headers: { "Authorization": "Bearer " + currentToken }
+        });
+        myReservations = await resRes.json();
+
+        showTab('active');
+    } catch (err) {
+        console.error("Error fetching data:", err);
+    }
+}
+
+function showTab(type) {
+    document.querySelectorAll('.lib-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const tbody = document.getElementById("loansBody");
+    const thead = document.getElementById("tableHeaders");
+    tbody.innerHTML = "";
+
+    if (type === 'reservations') {
+        thead.innerHTML = `<th>Book</th><th>Requested On</th><th>Status</th><th>Actions</th>`;
+        
+        if (!myReservations || myReservations.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='4' style='text-align:center;color:var(--text-muted);padding:2rem;'>No reservations found.</td></tr>";
+            return;
+        }
+
+        myReservations.forEach(res => {
+            const date = new Date(res.requestDate).toLocaleDateString();
+            let statusBadge = '';
+            if (res.status === 'PENDING') statusBadge = '<span class="lib-badge lib-badge-warning">Pending</span>';
+            else if (res.status === 'FULFILLED') statusBadge = '<span class="lib-badge lib-badge-success">Fulfilled</span>';
+            else statusBadge = `<span class="lib-badge lib-badge-neutral">${res.status}</span>`;
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${res.book ? res.book.title : 'Unknown'}</strong></td>
+                    <td>${date}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        ${res.status === 'PENDING' 
+                            ? `<button class="lib-btn lib-btn-danger lib-btn-sm" onclick="cancelReservation('${res._id}')">Cancel</button>` 
+                            : '—'}
+                    </td>
+                </tr>
+            `;
+        });
+        return;
+    }
+
+    // Loans logic (Active/History)
+    thead.innerHTML = `<th>Book</th><th>Due Date</th><th>Status</th><th>Actions</th>`;
+    
+    let filteredLoans = [];
+    if (allLoans && allLoans.length > 0) {
+        filteredLoans = allLoans.filter(loan => {
+            if (type === 'active') return !loan.returned;
+            return loan.returned;
+        });
+    }
+
+    if (filteredLoans.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='4' style='text-align:center;color:var(--text-muted);padding:2rem;'>No records found.</td></tr>";
+        return;
+    }
+
+    filteredLoans.forEach(loan => {
+        const dueDate = new Date(loan.dueDate);
+        const isOverdue = new Date() > dueDate && !loan.returned;
+        
+        let statusBadge = '';
+        if (loan.returned) statusBadge = '<span class="lib-badge lib-badge-neutral">Returned</span>';
+        else if (isOverdue) statusBadge = '<span class="lib-badge lib-badge-danger">Overdue</span>';
+        else statusBadge = '<span class="lib-badge lib-badge-success">Borrowed</span>';
+
+        tbody.innerHTML += `
+            <tr>
+                <td><strong>${loan.book.title}</strong></td>
+                <td class="${isOverdue ? 'overdue' : ''}">
+                    ${dueDate.toLocaleDateString()}
+                    ${isOverdue ? ' (OVERDUE)' : ''}
+                </td>
+                <td>${statusBadge}</td>
+                <td>
+                    ${!loan.returned 
+                        ? `<button class="lib-btn lib-btn-warning lib-btn-sm" onclick="renewBook('${loan._id}')">Renew</button>` 
+                        : '—'}
+                </td>
+            </tr>
+        `;
+    });
+}
+
+async function renewBook(id) {
+    const res = await fetch("/api/borrows/renew/" + id, {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + localStorage.getItem("token") }
+    });
+    
+    if (res.ok) {
+        alert("Book renewed successfully!");
+        fetchMyLoans();
+    } else {
+        const data = await res.json();
+        alert(data.message || "Failed to renew");
+    }
+}
+
+async function cancelReservation(id) {
+    if(!confirm("Cancel reservation?")) return;
+    const res = await fetch("/api/reservations/cancel/" + id, {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + localStorage.getItem("token") }
+    });
+    if(res.ok) {
+         alert("Reservation cancelled.");
+         fetchMyLoans();
+    } else {
+         alert("Failed to cancel");
+    }
+}
+
+fetchMyLoans();
+</script>
+
+</body>
+</html>

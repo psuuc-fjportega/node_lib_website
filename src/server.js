@@ -25,6 +25,10 @@ mongoose.connect(process.env.MONGO_URI)
 app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/books", require("./routes/book.routes"));
 app.use("/api/borrows", require("./routes/borrow.routes"));
+app.use("/api/settings", require("./routes/settings.routes"));
+app.use("/api/logs", require("./routes/log.routes"));
+app.use("/api/reports", require("./routes/reports.routes"));
+app.use("/api/reservations", require("./routes/reservation.routes"));
 
 // Frontend routes
 app.get("/", (req, res) => {

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Issue Book — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
+</head>
+<body>
+
+<nav class="lib-navbar">
+  <a href="/" class="logo">📚 Urdaneta City Library</a>
+  <div class="nav-links">
+    <a href="/librarian.html">Dashboard</a>
+    <span class="user-info" id="userDisplay"></span>
+  </div>
+</nav>
+
+<div class="lib-page-narrow">
+  <div class="lib-page-header">
+    <h1>📤 Issue Book</h1>
+    <div class="breadcrumb"><a href="/librarian.html">Librarian Dashboard</a> → Issue Book</div>
+  </div>
+
+  <div class="lib-card">
+    <div class="lib-form-group">
+      <label>Select Member</label>
+      <select id="userSelect" class="lib-input">
+        <option>Loading users...</option>
+      </select>
+    </div>
+    <div class="lib-form-group">
+      <label>Select Book</label>
+      <select id="bookSelect" class="lib-input">
+        <option>Loading books...</option>
+      </select>
+    </div>
+    <button class="lib-btn lib-btn-primary" onclick="issueBook()" style="width:100%">Issue Book</button>
+  </div>
+</div>
+
+<footer class="lib-footer">
+  <p>&copy; 2026 Urdaneta City Library</p>
+</footer>
+
+<script>
+const token = localStorage.getItem("token");
+if (!token) window.location.href = "/login.html";
+
+const username = localStorage.getItem("username");
+document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
+
+async function loadData() {
+    try {
+        const bookRes = await fetch("/api/books");
+        const books = await bookRes.json();
+        const bookSelect = document.getElementById("bookSelect");
+        bookSelect.innerHTML = "";
+        books.forEach(book => {
+            if (book.availableCopies > 0) {
+                bookSelect.innerHTML += `<option value="${book._id}">${book.title} (Available: ${book.availableCopies})</option>`;
+            }
+        });
+        if(!bookSelect.innerHTML) bookSelect.innerHTML = '<option>No books available</option>';
+
+        const userRes = await fetch("/api/users?role=MEMBER", {
+             headers: { "Authorization": "Bearer " + token }
+        }); 
+        
+        if (userRes.ok) {
+             const users = await userRes.json();
+             const userSelect = document.getElementById("userSelect");
+             userSelect.innerHTML = "";
+             users.forEach(user => {
+                 if (user.role === 'MEMBER') {
+                    userSelect.innerHTML += `<option value="${user._id}">${user.username}</option>`;
+                 }
+             });
+        } else {
+             document.getElementById("userSelect").innerHTML = "<option>Error loading users</option>";
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function issueBook() {
+    const userId = document.getElementById("userSelect").value;
+    const bookId = document.getElementById("bookSelect").value;
+
+    const res = await fetch("/api/borrows/issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ userId, bookId })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+        alert("Book issued successfully! Due Date: " + new Date(data.dueDate).toLocaleDateString());
+        loadData();
+    } else {
+        alert(data.message || "Failed to issue book");
+    }
+}
+
+loadData();
+</script>
+
+</body>
+</html>

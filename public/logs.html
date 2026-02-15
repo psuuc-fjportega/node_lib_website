@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Logs — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
+</head>
+<body>
+
+<nav class="lib-navbar">
+  <a href="/" class="logo">📚 Urdaneta City Library</a>
+  <div class="nav-links">
+    <a href="/admin.html">Dashboard</a>
+    <span class="user-info" id="userDisplay"></span>
+  </div>
+</nav>
+
+<div class="lib-page">
+  <div class="lib-page-header">
+    <h1>📋 Activity Logs</h1>
+    <div class="breadcrumb"><a href="/admin.html">Admin Dashboard</a> → Activity Logs</div>
+  </div>
+
+  <div class="lib-table-wrapper">
+    <table class="lib-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Action</th>
+          <th>User</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody id="logsTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer class="lib-footer">
+  <p>&copy; 2026 Urdaneta City Library</p>
+</footer>
+
+<script>
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+const username = localStorage.getItem("username");
+
+if (!token || role !== "ADMIN") {
+    alert("Access denied");
+    window.location.href = "/login.html";
+}
+
+document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
+
+async function fetchLogs() {
+    try {
+        const res = await fetch("/api/logs", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const logs = await res.json();
+        
+        const table = document.getElementById("logsTable");
+        table.innerHTML = "";
+
+        logs.forEach(log => {
+            const date = new Date(log.timestamp).toLocaleString();
+            const user = log.user ? log.user.username : "System/Guest";
+            
+            table.innerHTML += `
+                <tr>
+                    <td>${date}</td>
+                    <td><span class="lib-badge lib-badge-info">${log.action}</span></td>
+                    <td>${user}</td>
+                    <td>${log.details || "—"}</td>
+                </tr>
+            `;
+        });
+    } catch (err) {
+        console.error(err);
+        alert("Failed to load logs");
+    }
+}
+
+fetchLogs();
+</script>
+
+</body>
+</html>

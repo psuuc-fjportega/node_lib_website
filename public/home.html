@@ -3,80 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Library System</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-  * { margin:0; padding:0; box-sizing:border-box; font-family:'Roboto', sans-serif; }
-
-  body { background:#F0F4FF; color:#111827; }
-
-  /* Header */
-  .header {
-    background: linear-gradient(135deg, #1E3A8A, #2563EB);
-    color:white;
-    text-align:center;
-    padding:120px 20px 60px;
-  }
-  .header h1 { font-size:3rem; margin-bottom:15px; }
-  .header p { font-size:1.2rem; margin-bottom:30px; color: #F0F4FF; }
-
-  /* Buttons */
-  .btn-container { margin-top:20px; }
-  .btn { text-decoration:none; padding:14px 30px; border-radius:50px; font-weight:bold; margin:0 10px; display:inline-block; transition:0.3s; }
-  .btn-primary { background:#F97316; color:white; }
-  .btn-primary:hover { background:#FFB366; color:#111827; }
-  .btn-secondary { background:#2563EB; color:white; }
-  .btn-secondary:hover { background:#1E3A8A; }
-
-  /* Features */
-  .features { display:flex; justify-content:center; flex-wrap:wrap; padding:50px 20px; }
-  .feature-card {
-    background:white;
-    border-radius:20px;
-    padding:30px;
-    margin:15px;
-    width:250px;
-    box-shadow:0 20px 50px rgba(0,0,0,0.1);
-    text-align:center;
-    transition: transform 0.3s, box-shadow 0.3s;
-  }
-  .feature-card:hover { transform: translateY(-5px); box-shadow:0 25px 60px rgba(0,0,0,0.15); }
-  .feature-card h2 { margin-bottom:15px; color:#2563EB; }
-
-  /* Footer */
-  footer { text-align:center; padding:25px; background:#E0E7FF; margin-top:50px; font-size:0.9rem; color:#1E3A8A; }
-
-  /* Responsive */
-  @media (max-width:768px) { .features { flex-direction:column; align-items:center; } .header h1 { font-size:2.2rem; } }
-</style>
+<title>Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
 </head>
 <body>
-  <header class="header">
-    <h1>Welcome to Urdaneta City Library</h1>
-    <p>Your Gateway to Books, Knowledge, and Inspiration!</p>
-    <div class="btn-container">
-      <a href="/register" class="btn btn-primary">Register</a>
-      <a href="/login" class="btn btn-secondary">Login</a>
-    </div>
-  </header>
 
-  <section class="features">
-    <div class="feature-card">
-      <h2>Members</h2>
-      <p>Browse and borrow books, view your borrow history, and explore new knowledge.</p>
-    </div>
-    <div class="feature-card">
-      <h2>Librarians</h2>
-      <p>Manage books, assist members, and keep the library organized efficiently.</p>
-    </div>
-    <div class="feature-card">
-      <h2>Admins</h2>
-      <p>Oversee the system, manage users and librarians, and ensure smooth library operations.</p>
-    </div>
-  </section>
+<!-- Navbar -->
+<nav class="lib-navbar">
+  <a href="/" class="logo">📚 Urdaneta City Library</a>
+  <div class="nav-links">
+    <a href="/login">Login</a>
+    <a href="/register">Register</a>
+  </div>
+</nav>
 
-  <footer>
-    &copy; 2026 Library System. All rights reserved.
-  </footer>
+<!-- Hero -->
+<header class="lib-hero">
+  <h1>Welcome to Urdaneta City Library</h1>
+  <p>Your Gateway to Books, Knowledge, and Inspiration</p>
+  <p class="hero-subtitle">"A library is not a luxury but one of the necessities of life." — Henry Ward Beecher</p>
+  <div style="margin-top:2rem; position:relative;">
+    <a href="/register" class="lib-btn lib-btn-accent lib-btn-lg" style="margin-right:0.5rem;">Get Started</a>
+    <a href="/login" class="lib-btn lib-btn-ghost lib-btn-lg">Sign In</a>
+  </div>
+</header>
+
+<!-- Features -->
+<section class="lib-features">
+  <div class="lib-feature-card" style="border-top:4px solid var(--primary);">
+    <div class="feature-icon">
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="56" height="56" rx="14" fill="#F5EDE3"/>
+        <path d="M14 18c0-1.1.9-2 2-2h8a4 4 0 014 4v20s-1-2-5-2H16a2 2 0 01-2-2V18z" fill="#D4A574"/>
+        <path d="M42 18c0-1.1-.9-2-2-2h-8a4 4 0 00-4 4v20s1-2 5-2h7a2 2 0 002-2V18z" fill="#8B4513"/>
+        <circle cx="28" cy="16" r="3" fill="#C9A84C"/>
+      </svg>
+    </div>
+    <h2>Vast Collection</h2>
+    <p>Explore thousands of titles across fiction, non-fiction, history, science, and more — all at your fingertips.</p>
+  </div>
+  <div class="lib-feature-card" style="border-top:4px solid var(--accent-gold);">
+    <div class="feature-icon">
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="56" height="56" rx="14" fill="#F5EDE3"/>
+        <rect x="14" y="14" width="28" height="28" rx="4" fill="#D4A574"/>
+        <path d="M22 22h12M22 28h8M22 34h10" stroke="#5C2D0E" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="38" cy="38" r="8" fill="#8B4513"/>
+        <path d="M36 38l2 2 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2>Easy Borrowing</h2>
+    <p>Borrow books online, track due dates, renew with one click, and never worry about late returns again.</p>
+  </div>
+  <div class="lib-feature-card" style="border-top:4px solid var(--success);">
+    <div class="feature-icon">
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="56" height="56" rx="14" fill="#F5EDE3"/>
+        <path d="M28 14l3.5 7 7.5 1-5.5 5.2 1.3 7.8L28 31.5l-6.8 3.5 1.3-7.8L17 22l7.5-1L28 14z" fill="#C9A84C"/>
+        <rect x="16" y="38" width="24" height="4" rx="2" fill="#8B4513"/>
+        <rect x="20" y="34" width="16" height="4" rx="1" fill="#D4A574"/>
+      </svg>
+    </div>
+    <h2>Smart Reservations</h2>
+    <p>Can't find a book? Reserve it instantly and get notified the moment it becomes available for pickup.</p>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="lib-footer">
+  <p>&copy; 2026 Urdaneta City Library. All rights reserved.</p>
+  <p style="margin-top:0.5rem;"><a href="/">Home</a></p>
+</footer>
+
 </body>
 </html>

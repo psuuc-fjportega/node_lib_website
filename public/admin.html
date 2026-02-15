@@ -3,86 +3,81 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Dashboard</title>
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: linear-gradient(to right, #1E3A8A, #2563EB);
-  color: white;
-  margin: 0;
-  text-align: center;
-}
-header {
-  padding: 2rem;
-}
-.container {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-  padding: 2rem;
-}
-.card {
-  background: rgba(255,255,255,0.15);
-  padding: 2rem;
-  border-radius: 15px;
-  width: 250px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-.card:hover {
-  transform: scale(1.05);
-}
-button {
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: none;
-  background: crimson;
-  color: white;
-  cursor: pointer;
-}
-</style>
+<title>Admin Dashboard — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
 </head>
 <body>
 
-<header>
-  <h1>Admin Dashboard</h1>
-  <p>Full system control</p>
-  <button onclick="logout()">Logout</button>
-</header>
+<nav class="lib-navbar">
+  <a href="/" class="logo">📚 Urdaneta City Library</a>
+  <div class="nav-links">
+    <span class="user-info" id="userDisplay"></span>
+    <a href="#" id="logoutBtn">Logout</a>
+  </div>
+</nav>
 
-<div class="card" onclick="window.location.href='/manage-users.html'">
-  <h2>Manage Users</h2>
-  <p>View, edit, delete users</p>
-</div>
-
-
-  <div class="card" onclick="alert('System Reports coming next!')">
-    <h2>System Reports</h2>
-    <p>View system statistics</p>
+<div class="lib-page">
+  <div class="lib-page-header">
+    <h1>⚙️ Admin Dashboard</h1>
+    <div class="breadcrumb">Full system control and management</div>
   </div>
 
-  <div class="card" onclick="window.location.href='/librarian.html'">
-    <h2>View Librarian Panel</h2>
-    <p>Access librarian tools</p>
+  <div class="lib-dash-grid">
+    <div class="lib-dash-card" onclick="window.location.href='/manage-users.html'">
+      <div class="card-icon">👥</div>
+      <h2>Manage Users</h2>
+      <p>View, edit, and delete user accounts</p>
+    </div>
+
+    <div class="lib-dash-card" onclick="window.location.href='/settings.html'">
+      <div class="card-icon">🔧</div>
+      <h2>System Settings</h2>
+      <p>Configure loan durations and fines</p>
+    </div>
+
+    <div class="lib-dash-card" onclick="window.location.href='/logs.html'">
+      <div class="card-icon">📋</div>
+      <h2>Activity Logs</h2>
+      <p>View the system audit trail</p>
+    </div>
+
+    <div class="lib-dash-card" onclick="window.location.href='/reports.html'">
+      <div class="card-icon">📊</div>
+      <h2>System Reports</h2>
+      <p>View system-wide statistics</p>
+    </div>
+
+    <div class="lib-dash-card" onclick="window.location.href='/librarian.html'">
+      <div class="card-icon">📖</div>
+      <h2>Librarian Panel</h2>
+      <p>Access librarian tools and features</p>
+    </div>
   </div>
 </div>
+
+<footer class="lib-footer">
+  <p>&copy; 2026 Urdaneta City Library</p>
+</footer>
 
 <script>
-// 🔒 Protect page
 const token = localStorage.getItem("token");
 const role = localStorage.getItem("role");
+const username = localStorage.getItem("username");
 
 if (!token || role !== "ADMIN") {
   alert("Access denied.");
   window.location.href = "/login.html";
 }
 
-function logout() {
+document.getElementById("userDisplay").textContent = username ? `👤 ${username} (Admin)` : "";
+
+document.getElementById("logoutBtn").addEventListener("click", (e) => {
+  e.preventDefault();
   localStorage.removeItem("token");
   localStorage.removeItem("role");
+  localStorage.removeItem("username");
   window.location.href = "/login.html";
-}
+});
 </script>
 
 </body>

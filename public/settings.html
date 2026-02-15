@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Settings — Urdaneta City Library</title>
+<link rel="stylesheet" href="/library.css">
+</head>
+<body>
+
+<nav class="lib-navbar">
+  <a href="/" class="logo">📚 Urdaneta City Library</a>
+  <div class="nav-links">
+    <a href="/admin.html">Dashboard</a>
+    <span class="user-info" id="userDisplay"></span>
+  </div>
+</nav>
+
+<div class="lib-page-narrow">
+  <div class="lib-page-header">
+    <h1>🔧 System Settings</h1>
+    <div class="breadcrumb"><a href="/admin.html">Admin Dashboard</a> → Settings</div>
+  </div>
+
+  <div class="lib-card">
+    <div class="lib-form-group">
+      <label>Loan Duration (Days)</label>
+      <input type="number" id="loanDuration" class="lib-input">
+    </div>
+    <div class="lib-form-group">
+      <label>Max Books Per User</label>
+      <input type="number" id="maxBooksPerUser" class="lib-input">
+    </div>
+    <div class="lib-form-group">
+      <label>Fine Per Day (₱)</label>
+      <input type="number" id="finePerDay" class="lib-input">
+    </div>
+    <button class="lib-btn lib-btn-primary" onclick="saveSettings()" style="width:100%">Save Settings</button>
+  </div>
+</div>
+
+<footer class="lib-footer">
+  <p>&copy; 2026 Urdaneta City Library</p>
+</footer>
+
+<script>
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+const username = localStorage.getItem("username");
+
+if (!token || role !== "ADMIN") {
+    alert("Access denied");
+    window.location.href = "/login.html";
+}
+
+document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
+
+async function loadSettings() {
+    try {
+        const res = await fetch("/api/settings", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await res.json();
+        document.getElementById("loanDuration").value = data.loanDuration;
+        document.getElementById("maxBooksPerUser").value = data.maxBooksPerUser;
+        document.getElementById("finePerDay").value = data.finePerDay;
+    } catch (err) {
+        console.error(err);
+        alert("Failed to load settings");
+    }
+}
+
+async function saveSettings() {
+    const loanDuration = document.getElementById("loanDuration").value;
+    const maxBooksPerUser = document.getElementById("maxBooksPerUser").value;
+    const finePerDay = document.getElementById("finePerDay").value;
+
+    try {
+        const res = await fetch("/api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: JSON.stringify({ loanDuration, maxBooksPerUser, finePerDay })
+        });
+        const data = await res.json();
+        alert(data.message);
+    } catch (err) {
+        console.error(err);
+        alert("Failed to save settings");
+    }
+}
+
+loadSettings();
+</script>
+
+</body>
+</html>
