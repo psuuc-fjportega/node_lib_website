@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const SystemSettings = require("../models/SystemSettings");
 const { auth, adminOnly } = require("../middleware/auth.middleware");
-
 const { logActivity } = require("../utils/logger");
 
 // Get Settings
@@ -18,12 +17,14 @@ router.get("/", auth, async (req, res) => {
 // Update Settings (Admin only)
 router.put("/", auth, adminOnly, async (req, res) => {
   try {
-    const { loanDuration, maxBooksPerUser, finePerDay } = req.body;
+    const { loanDuration, maxBooksPerUser, finePerDay, maxRenewals, gracePeriodDays } = req.body;
     let settings = await SystemSettings.getSettings();
 
-    settings.loanDuration = loanDuration || settings.loanDuration;
-    settings.maxBooksPerUser = maxBooksPerUser || settings.maxBooksPerUser;
-    settings.finePerDay = finePerDay || settings.finePerDay;
+    if (loanDuration !== undefined) settings.loanDuration = loanDuration;
+    if (maxBooksPerUser !== undefined) settings.maxBooksPerUser = maxBooksPerUser;
+    if (finePerDay !== undefined) settings.finePerDay = finePerDay;
+    if (maxRenewals !== undefined) settings.maxRenewals = maxRenewals;
+    if (gracePeriodDays !== undefined) settings.gracePeriodDays = gracePeriodDays;
 
     await settings.save();
     await logActivity(req, "SETTINGS_UPDATE", "Updated system settings");

@@ -35,6 +35,9 @@ exports.login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ message: "Invalid password" });
 
+    // Check if deleted
+    if (user.isDeleted) return res.status(403).json({ message: "Account has been removed" });
+
     // Check if active
     if (user.isActive === false) return res.status(403).json({ message: "Account disabled" });
 

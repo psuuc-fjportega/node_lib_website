@@ -7,6 +7,8 @@ const BookSchema = new mongoose.Schema({
   category: { type: String, default: "General" },
   totalCopies: { type: Number, default: 1 },
   availableCopies: { type: Number, default: 1 },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null },
 });
 
 module.exports = mongoose.model("Book", BookSchema);

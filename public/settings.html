@@ -23,19 +23,38 @@
   </div>
 
   <div class="lib-card">
+    <h3 style="margin-bottom:1rem;color:var(--primary);">Loan Policy</h3>
     <div class="lib-form-group">
       <label>Loan Duration (Days)</label>
-      <input type="number" id="loanDuration" class="lib-input">
+      <input type="number" id="loanDuration" class="lib-input" min="1">
+      <small style="color:var(--text-muted);">How many days a member can keep a borrowed book</small>
     </div>
     <div class="lib-form-group">
       <label>Max Books Per User</label>
-      <input type="number" id="maxBooksPerUser" class="lib-input">
+      <input type="number" id="maxBooksPerUser" class="lib-input" min="1">
+      <small style="color:var(--text-muted);">Maximum number of books a member can borrow simultaneously</small>
     </div>
     <div class="lib-form-group">
-      <label>Fine Per Day (₱)</label>
-      <input type="number" id="finePerDay" class="lib-input">
+      <label>Max Renewals Per Borrow</label>
+      <input type="number" id="maxRenewals" class="lib-input" min="0">
+      <small style="color:var(--text-muted);">How many times a single borrow can be renewed (0 = no renewals allowed)</small>
     </div>
-    <button class="lib-btn lib-btn-primary" onclick="saveSettings()" style="width:100%">Save Settings</button>
+
+    <hr style="margin:1.5rem 0;border-color:var(--border);">
+
+    <h3 style="margin-bottom:1rem;color:var(--primary);">Fines & Penalties</h3>
+    <div class="lib-form-group">
+      <label>Fine Per Day (₱)</label>
+      <input type="number" id="finePerDay" class="lib-input" min="0" step="0.5">
+      <small style="color:var(--text-muted);">Amount charged per day after overdue (set to 0 for no fines)</small>
+    </div>
+    <div class="lib-form-group">
+      <label>Grace Period (Days)</label>
+      <input type="number" id="gracePeriodDays" class="lib-input" min="0">
+      <small style="color:var(--text-muted);">Days after due date before fines start accumulating (0 = immediate)</small>
+    </div>
+
+    <button class="lib-btn lib-btn-primary" onclick="saveSettings()" style="width:100%;margin-top:0.5rem;">Save Settings</button>
   </div>
 </div>
 
@@ -64,6 +83,8 @@ async function loadSettings() {
         document.getElementById("loanDuration").value = data.loanDuration;
         document.getElementById("maxBooksPerUser").value = data.maxBooksPerUser;
         document.getElementById("finePerDay").value = data.finePerDay;
+        document.getElementById("maxRenewals").value = data.maxRenewals ?? 2;
+        document.getElementById("gracePeriodDays").value = data.gracePeriodDays ?? 1;
     } catch (err) {
         console.error(err);
         alert("Failed to load settings");
@@ -71,15 +92,19 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
-    const loanDuration = document.getElementById("loanDuration").value;
-    const maxBooksPerUser = document.getElementById("maxBooksPerUser").value;
-    const finePerDay = document.getElementById("finePerDay").value;
+    const body = {
+        loanDuration: parseInt(document.getElementById("loanDuration").value),
+        maxBooksPerUser: parseInt(document.getElementById("maxBooksPerUser").value),
+        finePerDay: parseFloat(document.getElementById("finePerDay").value),
+        maxRenewals: parseInt(document.getElementById("maxRenewals").value),
+        gracePeriodDays: parseInt(document.getElementById("gracePeriodDays").value),
+    };
 
     try {
         const res = await fetch("/api/settings", {
             method: "PUT",
             headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-            body: JSON.stringify({ loanDuration, maxBooksPerUser, finePerDay })
+            body: JSON.stringify(body)
         });
         const data = await res.json();
         alert(data.message);

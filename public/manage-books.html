@@ -22,7 +22,12 @@
     <div class="breadcrumb"><a href="/librarian.html">Librarian Dashboard</a> → Manage Books</div>
   </div>
 
-  <button class="lib-btn lib-btn-success" onclick="openModal()">+ Add New Book</button>
+  <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+    <button class="lib-btn lib-btn-success" onclick="openModal()">+ Add New Book</button>
+    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.9rem;color:var(--text-light);cursor:pointer;">
+      <input type="checkbox" id="showDeletedToggle" onchange="fetchBooks()"> Show Archived Books
+    </label>
+  </div>
 
   <div class="lib-table-wrapper">
     <table class="lib-table">
@@ -31,6 +36,7 @@
           <th>Title</th>
           <th>Author</th>
           <th>Copies (Avail / Total)</th>
+          <th>Status</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -68,6 +74,27 @@
   </div>
 </div>
 
+<!-- Modal for Viewing Copies -->
+<div id="copiesModal" class="lib-modal-overlay" onclick="if(event.target===this)closeCopiesModal()">
+  <div class="lib-modal" style="max-width:600px;">
+    <button class="lib-modal-close" onclick="closeCopiesModal()">&times;</button>
+    <h2 id="copiesTitle">Book Copies</h2>
+    <div class="lib-table-wrapper" style="margin-top:1rem;">
+      <table class="lib-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Accession No.</th>
+            <th>Status</th>
+            <th>Condition</th>
+          </tr>
+        </thead>
+        <tbody id="copiesBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <footer class="lib-footer">
   <p>&copy; 2026 Urdaneta City Library</p>
 </footer>
@@ -80,28 +107,47 @@ const username = localStorage.getItem("username");
 document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
 
 async function fetchBooks() {
-    const res = await fetch("/api/books");
+    const showDeleted = document.getElementById("showDeletedToggle").checked;
+    let url = "/api/books";
+    if (showDeleted) url += "?includeDeleted=true";
+    
+    const res = await fetch(url);
     const books = await res.json();
     const tbody = document.getElementById("booksTable");
     tbody.innerHTML = "";
     
     books.forEach(book => {
+        const isDeleted = book.isDeleted;
         tbody.innerHTML += `
-            <tr>
+            <tr style="${isDeleted ? 'opacity:0.5;' : ''}">
                 <td><strong>${book.title}</strong></td>
                 <td>${book.author}</td>
                 <td>
                   <span class="lib-badge ${book.availableCopies > 0 ? 'lib-badge-success' : 'lib-badge-danger'}">
                     ${book.availableCopies}
                   </span> / ${book.totalCopies}
+                  <button class="lib-btn lib-btn-sm" style="margin-left:0.5rem;background:var(--primary-light);color:#fff;font-size:0.7rem;" onclick="viewCopies('${book._id}', '${book.title.replace(/'/g,"\\'")}')">View Copies</button>
                 </td>
                 <td>
-                    <button class="lib-btn lib-btn-primary lib-btn-sm" onclick="editBook('${book._id}', '${book.title.replace(/'/g,"\\'")}', '${book.author.replace(/'/g,"\\'")}', '${(book.description||'').replace(/'/g,"\\'")}', ${book.totalCopies})">Edit</button>
-                    <button class="lib-btn lib-btn-danger lib-btn-sm" onclick="deleteBook('${book._id}')">Delete</button>
+                  ${isDeleted 
+                    ? '<span class="lib-badge lib-badge-danger">Archived</span>' 
+                    : '<span class="lib-badge lib-badge-success">Active</span>'}
+                </td>
+                <td>
+                    ${isDeleted 
+                      ? `<button class="lib-btn lib-btn-success lib-btn-sm" onclick="restoreBook('${book._id}')">Restore</button>`
+                      : `
+                        <button class="lib-btn lib-btn-primary lib-btn-sm" onclick="editBook('${book._id}', '${book.title.replace(/'/g,"\\'")}', '${book.author.replace(/'/g,"\\'")}', '${(book.description||'').replace(/'/g,"\\'")}', ${book.totalCopies})">Edit</button>
+                        <button class="lib-btn lib-btn-danger lib-btn-sm" onclick="deleteBook('${book._id}')">Archive</button>
+                      `}
                 </td>
             </tr>
         `;
     });
+
+    if(!tbody.innerHTML) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">No books found.</td></tr>';
+    }
 }
 
 function openModal() {
@@ -149,13 +195,73 @@ async function saveBook() {
 }
 
 async function deleteBook(id) {
-    if(!confirm("Are you sure?")) return;
+    if(!confirm("Archive this book? (It can be restored later)")) return;
     const res = await fetch("/api/books/" + id, {
         method: "DELETE",
         headers: { "Authorization": "Bearer " + token }
     });
-    if (res.ok) fetchBooks();
-    else alert("Failed to delete book");
+    if (res.ok) { alert("Book archived."); fetchBooks(); }
+    else alert("Failed to archive book");
+}
+
+async function restoreBook(id) {
+    const res = await fetch("/api/books/" + id + "/restore", {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + token }
+    });
+    if (res.ok) { alert("Book restored!"); fetchBooks(); }
+    else alert("Failed to restore book");
+}
+
+async function viewCopies(bookId, bookTitle) {
+    document.getElementById("copiesTitle").textContent = "Copies: " + bookTitle;
+    document.getElementById("copiesModal").classList.add("active");
+    
+    const res = await fetch("/api/books/" + bookId + "/copies", {
+        headers: { "Authorization": "Bearer " + token }
+    });
+    const copies = await res.json();
+    const tbody = document.getElementById("copiesBody");
+    tbody.innerHTML = "";
+
+    if (copies.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1rem;">No copy records found.</td></tr>';
+        return;
+    }
+
+    copies.forEach(copy => {
+        let statusBadge = '';
+        switch(copy.status) {
+            case 'AVAILABLE': statusBadge = '<span class="lib-badge lib-badge-success">Available</span>'; break;
+            case 'BORROWED': statusBadge = '<span class="lib-badge lib-badge-info">Borrowed</span>'; break;
+            case 'LOST': statusBadge = '<span class="lib-badge lib-badge-danger">Lost</span>'; break;
+            case 'DAMAGED': statusBadge = '<span class="lib-badge lib-badge-warning">Damaged</span>'; break;
+            case 'MAINTENANCE': statusBadge = '<span class="lib-badge lib-badge-neutral">Maintenance</span>'; break;
+            default: statusBadge = `<span class="lib-badge lib-badge-neutral">${copy.status}</span>`;
+        }
+
+        let conditionBadge = '';
+        switch(copy.condition) {
+            case 'NEW': conditionBadge = '<span class="lib-badge lib-badge-success">New</span>'; break;
+            case 'GOOD': conditionBadge = '<span class="lib-badge lib-badge-info">Good</span>'; break;
+            case 'FAIR': conditionBadge = '<span class="lib-badge lib-badge-warning">Fair</span>'; break;
+            case 'POOR': conditionBadge = '<span class="lib-badge lib-badge-danger">Poor</span>'; break;
+            default: conditionBadge = `<span class="lib-badge lib-badge-neutral">${copy.condition}</span>`;
+        }
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${copy.copyNumber}</td>
+            <td><code>${copy.accessionNo}</code></td>
+            <td>${statusBadge}</td>
+            <td>${conditionBadge}</td>
+          </tr>
+        `;
+    });
+}
+
+function closeCopiesModal() {
+    document.getElementById("copiesModal").classList.remove("active");
 }
 
 fetchBooks();

@@ -7,8 +7,9 @@ const { logActivity } = require("../utils/logger");
 // Get Users (Admin or Librarian)
 router.get("/", auth, roleCheck(["ADMIN", "LIBRARIAN"]), async (req, res) => {
   try {
-    const { role } = req.query;
-    let query = {};
+    const { role, includeDeleted } = req.query;
+    let query = { isDeleted: false }; // hide soft-deleted by default
+    if (includeDeleted === "true") delete query.isDeleted;
     if (role) query.role = role;
 
     const users = await User.find(query).select("-password");
@@ -17,6 +18,7 @@ router.get("/", auth, roleCheck(["ADMIN", "LIBRARIAN"]), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // DELETE user (ADMIN only)
 // DELETE user (ADMIN only)
@@ -50,10 +52,14 @@ router.delete("/:id", auth, adminOnly, async (req, res) => {
       }
     }
 
-    await User.findByIdAndDelete(userIdToDelete);
-    await logActivity(req, "USER_DELETE", `Deleted user ID: ${userIdToDelete}`);
+    const user = await User.findById(userIdToDelete);
+    user.isDeleted = true;
+    user.deletedAt = new Date();
+    user.isActive = false;
+    await user.save();
+    await logActivity(req, "USER_SOFT_DELETE", `Soft-deleted user: ${user.username}`);
 
-    res.json({ message: "User deleted successfully" });
+    res.json({ message: "User archived (soft-deleted)" });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -62,7 +68,24 @@ router.delete("/:id", auth, adminOnly, async (req, res) => {
   
 });
 
+// Restore soft-deleted user (Admin only)
+router.put("/:id/restore", auth, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user.isDeleted) return res.status(400).json({ message: "User is not deleted" });
 
+    user.isDeleted = false;
+    user.deletedAt = null;
+    user.isActive = true;
+    await user.save();
+    await logActivity(req, "USER_RESTORE", `Restored user: ${user.username}`);
+
+    res.json({ message: "User restored successfully", user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.put("/:id", auth, adminOnly, async (req, res) => {
   try {

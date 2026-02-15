@@ -22,9 +22,14 @@
     <div class="breadcrumb"><a href="/admin.html">Admin Dashboard</a> → Manage Users</div>
   </div>
 
-  <button class="lib-btn lib-btn-success" onclick="document.getElementById('addUserModal').classList.add('active')">
-    + Add User
-  </button>
+  <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+    <button class="lib-btn lib-btn-success" onclick="document.getElementById('addUserModal').classList.add('active')">
+      + Add User
+    </button>
+    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.9rem;color:var(--text-light);cursor:pointer;">
+      <input type="checkbox" id="showDeletedToggle" onchange="fetchUsers()"> Show Archived Users
+    </label>
+  </div>
 
   <div class="lib-table-wrapper">
     <table class="lib-table">
@@ -86,7 +91,11 @@ fetchUsers();
 
 async function fetchUsers() {
   try {
-    const res = await fetch("/api/users", {
+    const showDeleted = document.getElementById("showDeletedToggle").checked;
+    let url = "/api/users";
+    if (showDeleted) url += "?includeDeleted=true";
+
+    const res = await fetch(url, {
       headers: { "Authorization": "Bearer " + token }
     });
     const data = await res.json();
@@ -102,38 +111,55 @@ async function fetchUsers() {
 
     data.forEach(user => {
       const isOtherAdmin = user.role === 'ADMIN' && user._id !== currentUserId;
+      const isDeleted = user.isDeleted;
+
+      // Build status badges
+      let statusBadges = '';
+      if (isDeleted) {
+        statusBadges = '<span class="lib-badge lib-badge-danger">Archived</span>';
+      } else if (!user.isActive) {
+        statusBadges = '<span class="lib-badge lib-badge-warning">Disabled</span>';
+      } else {
+        statusBadges = '<span class="lib-badge lib-badge-success">Active</span>';
+      }
+
+      // Build action buttons
+      let actions = '';
+      if (isDeleted) {
+        actions = `<button class="lib-btn lib-btn-success lib-btn-sm" onclick="restoreUser('${user._id}')">Restore</button>`;
+      } else if (isOtherAdmin) {
+        actions = '<span class="lib-badge lib-badge-neutral">Protected</span>';
+      } else {
+        actions = `
+          <button class="lib-btn lib-btn-success lib-btn-sm" onclick="updateUser('${user._id}')">Update</button>
+          <button class="lib-btn lib-btn-warning lib-btn-sm" onclick="toggleUserStatus('${user._id}')">
+            ${user.isActive ? 'Disable' : 'Enable'}
+          </button>
+          <button class="lib-btn lib-btn-danger lib-btn-sm" onclick="deleteUser('${user._id}')">Archive</button>
+        `;
+      }
       
       table.innerHTML += `
-        <tr style="${!user.isActive ? 'opacity:0.5;' : ''}">
+        <tr style="${isDeleted ? 'opacity:0.5;' : (!user.isActive ? 'opacity:0.7;' : '')}">
           <td>
-            <input type="text" id="username-${user._id}" value="${user.username}" class="lib-input" style="padding:0.4rem 0.6rem;" ${isOtherAdmin ? 'disabled' : ''} />
+            <input type="text" id="username-${user._id}" value="${user.username}" class="lib-input" style="padding:0.4rem 0.6rem;" ${isOtherAdmin || isDeleted ? 'disabled' : ''} />
           </td>
           <td>
-            <select id="role-${user._id}" class="lib-input" style="padding:0.4rem 0.6rem;" ${isOtherAdmin ? 'disabled' : ''}>
+            <select id="role-${user._id}" class="lib-input" style="padding:0.4rem 0.6rem;" ${isOtherAdmin || isDeleted ? 'disabled' : ''}>
               <option value="MEMBER" ${user.role === 'MEMBER' ? 'selected' : ''}>Member</option>
               <option value="LIBRARIAN" ${user.role === 'LIBRARIAN' ? 'selected' : ''}>Librarian</option>
               <option value="ADMIN" ${user.role === 'ADMIN' ? 'selected' : ''}>Admin</option>
             </select>
           </td>
-          <td>
-            ${user.isActive 
-              ? '<span class="lib-badge lib-badge-success">Active</span>' 
-              : '<span class="lib-badge lib-badge-danger">Disabled</span>'}
-          </td>
-          <td>
-            ${isOtherAdmin 
-              ? '<span class="lib-badge lib-badge-neutral">Protected</span>' 
-              : `
-                <button class="lib-btn lib-btn-success lib-btn-sm" onclick="updateUser('${user._id}')">Update</button>
-                <button class="lib-btn lib-btn-warning lib-btn-sm" onclick="toggleUserStatus('${user._id}')">
-                  ${user.isActive ? 'Disable' : 'Enable'}
-                </button>
-                <button class="lib-btn lib-btn-danger lib-btn-sm" onclick="deleteUser('${user._id}')">Delete</button>
-              `}
-          </td>
+          <td>${statusBadges}</td>
+          <td>${actions}</td>
         </tr>
       `;
     });
+
+    if (!data.length) {
+      table.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:2rem;">No users found.</td></tr>';
+    }
   } catch (error) {
     console.error("FETCH ERROR:", error);
     alert("Something crashed while fetching users.");
@@ -173,14 +199,23 @@ async function toggleUserStatus(id) {
 }
 
 async function deleteUser(id) {
-  if (!confirm("Delete this user?")) return;
+  if (!confirm("Archive this user? (They can be restored later)")) return;
   const res = await fetch("/api/users/" + id, {
     method: "DELETE",
     headers: { "Authorization": "Bearer " + token }
   });
   if (!res.ok) { const data = await res.json(); alert(data.message || "Delete failed"); return; }
-  alert("User deleted successfully");
+  alert("User archived (soft-deleted)");
   fetchUsers();
+}
+
+async function restoreUser(id) {
+  const res = await fetch("/api/users/" + id + "/restore", {
+    method: "PUT",
+    headers: { "Authorization": "Bearer " + token }
+  });
+  if (res.ok) { alert("User restored!"); fetchUsers(); }
+  else { const data = await res.json(); alert(data.message || "Restore failed"); }
 }
 
 async function updateUser(id) {
