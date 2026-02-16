@@ -11,15 +11,23 @@
 <nav class="lib-navbar">
   <a href="/" class="logo">📚 Urdaneta City Library</a>
   <div class="nav-links">
-    <a href="/librarian.html">Dashboard</a>
+    <a href="/librarian.html" id="dashLink">Dashboard</a>
     <span class="user-info" id="userDisplay"></span>
+    <a href="#" id="logoutBtn">Logout</a>
   </div>
 </nav>
 
 <div class="lib-page">
   <div class="lib-page-header">
     <h1>📑 Active Loans</h1>
-    <div class="breadcrumb"><a href="/librarian.html">Librarian Dashboard</a> → Active Loans</div>
+    <div class="breadcrumb">
+      <a href="/librarian.html" id="crumbDash">Librarian Dashboard</a> → Active Loans
+    </div>
+
+    <!-- Optional: show back button if ADMIN opened librarian tools -->
+    <button id="backToAdminBtn" style="display:none; margin-top:10px;">
+      ← Back to Admin Dashboard
+    </button>
   </div>
 
   <div class="lib-table-wrapper">
@@ -28,6 +36,7 @@
         <tr>
           <th>Book</th>
           <th>Borrower</th>
+          <th>Issued/Approved By</th>
           <th>Due Date</th>
           <th>Status</th>
           <th>Actions</th>
@@ -44,84 +53,224 @@
 
 <script>
 const token = localStorage.getItem("token");
-if (!token) window.location.href = "/login.html";
-
+const role = localStorage.getItem("role");
 const username = localStorage.getItem("username");
-document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
+
+if (!token) window.location.href = "/login.html";
+if (role && role !== "LIBRARIAN" && role !== "ADMIN") {
+  alert("This page is for Librarians/Admin only.");
+  window.location.href = "/member.html";
+}
+
+document.getElementById("userDisplay").textContent = username ? `👤 ${username} (${role})` : "";
+
+// Logout
+document.getElementById("logoutBtn").addEventListener("click", (e) => {
+  e.preventDefault();
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  localStorage.removeItem("username");
+  window.location.href = "/login.html";
+});
+
+// If ADMIN is viewing librarian tools, show back button
+if (role === "ADMIN") {
+  const backBtn = document.getElementById("backToAdminBtn");
+  backBtn.style.display = "inline-block";
+  backBtn.addEventListener("click", () => window.location.href = "/admin.html");
+}
+
+// Helper: try multiple endpoints so routing differences won't break UI
+async function fetchJSONWithFallback(paths, options) {
+  let lastErr = null;
+  for (const p of paths) {
+    try {
+      const res = await fetch(p, options);
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`${p} -> ${res.status} :: ${t}`);
+      }
+      const text = await res.text();
+      return text ? JSON.parse(text) : {};
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("All API paths failed");
+}
+
+function safeUserLabel(u) {
+  if (!u) return "Unknown";
+  if (typeof u === "string") return "Unknown (not populated)";
+  return u.username || u.name || u.email || "Unknown";
+}
+
+function statusBadgeFor(loan) {
+  if (loan.status === "PENDING") return '<span class="lib-badge lib-badge-warning">Pending</span>';
+  if (loan.status === "BORROWED") return '<span class="lib-badge lib-badge-success">Borrowed</span>';
+  if (loan.status === "REJECTED") return '<span class="lib-badge lib-badge-danger">Rejected</span>';
+  if (loan.status === "LOST") return '<span class="lib-badge lib-badge-danger">Lost</span>';
+  if (loan.status === "DAMAGED") return '<span class="lib-badge lib-badge-warning">Damaged</span>';
+  if (loan.status === "RETURNED") return '<span class="lib-badge lib-badge-neutral">Returned</span>';
+  return `<span class="lib-badge lib-badge-neutral">${loan.status || "UNKNOWN"}</span>`;
+}
 
 async function fetchLoans() {
-    const res = await fetch("/api/borrows", {
-        headers: { "Authorization": "Bearer " + token }
-    });
-    const loans = await res.json();
-    const tbody = document.getElementById("loansTable");
-    tbody.innerHTML = "";
-    
-    loans.forEach(loan => {
-        if (loan.status === 'RETURNED') return;
+  const tbody = document.getElementById("loansTable");
+  tbody.innerHTML = "";
 
-        const dueDate = new Date(loan.dueDate);
-        const isOverdue = new Date() > dueDate && loan.status === 'BORROWED';
-        
-        let statusBadge = '';
-        if (loan.status === 'BORROWED' && !isOverdue) statusBadge = '<span class="lib-badge lib-badge-success">Borrowed</span>';
-        else if (isOverdue) statusBadge = '<span class="lib-badge lib-badge-danger">Overdue</span>';
-        else if (loan.status === 'LOST') statusBadge = '<span class="lib-badge lib-badge-danger">Lost</span>';
-        else if (loan.status === 'DAMAGED') statusBadge = '<span class="lib-badge lib-badge-warning">Damaged</span>';
-        else statusBadge = `<span class="lib-badge lib-badge-neutral">${loan.status}</span>`;
+  try {
+    const loans = await fetchJSONWithFallback(
+      ["/api/borrows"],
+      { headers: { "Authorization": "Bearer " + token } }
+    );
 
-        tbody.innerHTML += `
-            <tr>
-                <td><strong>${loan.book ? loan.book.title : 'Unknown'}</strong></td>
-                <td>${loan.user ? loan.user.username : 'Unknown'}</td>
-                <td class="${isOverdue ? 'overdue' : ''}">
-                    ${dueDate.toLocaleDateString()}
-                    ${isOverdue ? ' (OVERDUE)' : ''}
-                </td>
-                <td>${statusBadge}</td>
-                <td>
-                    <button class="lib-btn lib-btn-success lib-btn-sm" onclick="returnBook('${loan._id}')">Return</button>
-                    <button class="lib-btn lib-btn-warning lib-btn-sm" onclick="renewBook('${loan._id}')">Renew</button>
-                    <button class="lib-btn lib-btn-sm" style="background:#666;color:#fff;" onclick="markStatus('${loan._id}', 'LOST')">Lost</button>
-                    <button class="lib-btn lib-btn-sm" style="background:#333;color:#fff;" onclick="markStatus('${loan._id}', 'DAMAGED')">Damaged</button>
-                </td>
-            </tr>
-        `;
-    });
+    const list = Array.isArray(loans) ? loans : [];
 
-    if(!tbody.innerHTML) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">No active loans found.</td></tr>';
+    // show both PENDING and active BORROWED/OVERDUE etc; hide RETURNED
+    const visible = list.filter(l => l.status !== "RETURNED");
+
+    if (visible.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">No loans / requests found.</td></tr>';
+      return;
     }
+
+    // Sort: Pending first, then Borrowed/Overdue
+    visible.sort((a, b) => {
+      const order = (x) => x.status === "PENDING" ? 0 : 1;
+      return order(a) - order(b);
+    });
+
+    visible.forEach(loan => {
+      const dueDate = loan.dueDate ? new Date(loan.dueDate) : null;
+      const isOverdue =
+        dueDate &&
+        new Date() > dueDate &&
+        (loan.status === "BORROWED") &&
+        !loan.returned;
+
+      let statusHtml = statusBadgeFor(loan);
+      if (isOverdue) statusHtml = '<span class="lib-badge lib-badge-danger">Overdue</span>';
+
+      const borrowerLabel = safeUserLabel(loan.user);
+      const approverLabel = safeUserLabel(loan.approvedBy || loan.issuedBy);
+
+      const dueDateText = dueDate ? dueDate.toLocaleDateString() : "—";
+
+      // Actions: pending => approve/reject; borrowed => return/renew/lost/damaged
+      let actionsHtml = "";
+
+      if (loan.status === "PENDING") {
+        actionsHtml = `
+          <button class="lib-btn lib-btn-success lib-btn-sm" onclick="approveBorrow('${loan._id}')">Approve</button>
+          <button class="lib-btn lib-btn-danger lib-btn-sm" onclick="rejectBorrow('${loan._id}')">Reject</button>
+        `;
+      } else {
+        actionsHtml = `
+          <button class="lib-btn lib-btn-success lib-btn-sm" onclick="returnBook('${loan._id}')">Return</button>
+          <button class="lib-btn lib-btn-warning lib-btn-sm" onclick="renewBook('${loan._id}')">Renew</button>
+          <button class="lib-btn lib-btn-sm" style="background:#666;color:#fff;" onclick="markStatus('${loan._id}', 'LOST')">Lost</button>
+          <button class="lib-btn lib-btn-sm" style="background:#333;color:#fff;" onclick="markStatus('${loan._id}', 'DAMAGED')">Damaged</button>
+        `;
+      }
+
+      tbody.innerHTML += `
+        <tr>
+          <td><strong>${loan.book?.title || "Unknown"}</strong></td>
+          <td>${borrowerLabel}</td>
+          <td>${approverLabel}</td>
+          <td class="${isOverdue ? 'overdue' : ''}">
+            ${dueDateText}
+            ${isOverdue ? ' (OVERDUE)' : ''}
+          </td>
+          <td>${statusHtml}</td>
+          <td>${actionsHtml}</td>
+        </tr>
+      `;
+    });
+
+  } catch (err) {
+    console.error("fetchLoans error:", err);
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">Failed to load loans. Check console + API route.</td></tr>';
+  }
+}
+
+async function approveBorrow(id) {
+  if(!confirm("Approve this borrow request?")) return;
+  try {
+    await fetchJSONWithFallback(
+      ["/api/borrows/approve/" + id],
+      { method: "PUT", headers: { "Authorization": "Bearer " + token } }
+    );
+    alert("Approved!");
+    fetchLoans();
+  } catch (e) {
+    console.error(e);
+    alert("Failed to approve. Check console.");
+  }
+}
+
+async function rejectBorrow(id) {
+  if(!confirm("Reject this borrow request?")) return;
+  try {
+    await fetchJSONWithFallback(
+      ["/api/borrows/reject/" + id],
+      { method: "PUT", headers: { "Authorization": "Bearer " + token } }
+    );
+    alert("Rejected.");
+    fetchLoans();
+  } catch (e) {
+    console.error(e);
+    alert("Failed to reject. Check console.");
+  }
 }
 
 async function returnBook(id) {
-    if(!confirm("Confirm return?")) return;
-    const res = await fetch("/api/borrows/return/" + id, {
-        method: "PUT",
-        headers: { "Authorization": "Bearer " + token }
-    });
-    if(res.ok) fetchLoans();
-    else alert("Failed to return");
+  if (!confirm("Confirm return?")) return;
+
+  try {
+    await fetchJSONWithFallback(
+      ["/api/borrows/return/" + id],
+      { method: "PUT", headers: { "Authorization": "Bearer " + token } }
+    );
+    fetchLoans();
+  } catch (e) {
+    console.error(e);
+    alert("Failed to return. Check console.");
+  }
 }
 
 async function renewBook(id) {
-    const res = await fetch("/api/borrows/renew/" + id, {
-        method: "PUT",
-        headers: { "Authorization": "Bearer " + token }
-    });
-    if(res.ok) { alert("Book renewed!"); fetchLoans(); }
-    else { const data = await res.json(); alert(data.message || "Failed to renew"); }
+  try {
+    await fetchJSONWithFallback(
+      ["/api/borrows/renew/" + id],
+      { method: "PUT", headers: { "Authorization": "Bearer " + token } }
+    );
+    alert("Book renewed!");
+    fetchLoans();
+  } catch (e) {
+    console.error(e);
+    alert("Failed to renew. Check console.");
+  }
 }
 
 async function markStatus(id, status) {
-    if(!confirm(`Mark this book as ${status}?`)) return;
-    const res = await fetch("/api/borrows/status/" + id, {
+  if (!confirm(`Mark this book as ${status}?`)) return;
+
+  try {
+    await fetchJSONWithFallback(
+      ["/api/borrows/status/" + id],
+      {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
         body: JSON.stringify({ status })
-    });
-    if(res.ok) fetchLoans();
-    else alert("Failed to update status");
+      }
+    );
+    fetchLoans();
+  } catch (e) {
+    console.error(e);
+    alert("Failed to update status. Check console.");
+  }
 }
 
 fetchLoans();

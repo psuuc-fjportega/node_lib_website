@@ -64,6 +64,7 @@ if (!token) {
   alert("You must log in first!");
   window.location.href = "/login.html";
 }
+
 if (role && role !== "MEMBER") {
   alert("This page is for Members only. Redirecting to your dashboard.");
   if (role === "ADMIN") window.location.href = "/admin.html";
@@ -72,24 +73,41 @@ if (role && role !== "MEMBER") {
 
 document.getElementById("userDisplay").textContent = username ? `👤 ${username} (Member)` : "";
 
-async function checkStatus() {
+// Try both possible API base paths so you don't get stuck if server mounts differently
+async function fetchJSONWithFallback(paths, options) {
+  let lastErr = null;
+  for (const p of paths) {
     try {
-        const res = await fetch("/api/borrows/my", {
-            headers: { "Authorization": "Bearer " + localStorage.getItem("token") }
-        });
-        const loans = await res.json();
-        
-        const activeLoans = loans.filter(l => !l.returned);
-        document.getElementById("activeCountBadge").innerText = activeLoans.length + " Active";
-
-        const overdue = activeLoans.filter(l => new Date() > new Date(l.dueDate));
-        if (overdue.length > 0) {
-            document.getElementById("alertContainer").style.display = "flex";
-            document.getElementById("overdueCount").innerText = overdue.length;
-        }
-    } catch (err) {
-        console.error(err);
+      const res = await fetch(p, options);
+      if (!res.ok) throw new Error(`${p} -> ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      lastErr = e;
     }
+  }
+  throw lastErr || new Error("All API paths failed");
+}
+
+async function checkStatus() {
+  try {
+    const loans = await fetchJSONWithFallback(
+      ["/api/borrows/my", "/borrow/my"],
+      { headers: { "Authorization": "Bearer " + token } }
+    );
+
+    const activeLoans = (loans || []).filter(l => !l.returned);
+    document.getElementById("activeCountBadge").innerText = activeLoans.length + " Active";
+
+    const overdue = activeLoans.filter(l => l.dueDate && new Date() > new Date(l.dueDate));
+    if (overdue.length > 0) {
+      document.getElementById("alertContainer").style.display = "flex";
+      document.getElementById("overdueCount").innerText = overdue.length;
+    } else {
+      document.getElementById("alertContainer").style.display = "none";
+    }
+  } catch (err) {
+    console.error("checkStatus error:", err);
+  }
 }
 
 checkStatus();

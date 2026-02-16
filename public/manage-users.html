@@ -87,6 +87,20 @@ if (!token || role !== "ADMIN") {
 
 document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
 
+function getCurrentUserIdFromToken() {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.userId || payload.id || payload._id;
+  } catch {
+    return null;
+  }
+}
+
+async function safeJson(res) {
+  const raw = await res.text();
+  try { return raw ? JSON.parse(raw) : {}; } catch { return { raw }; }
+}
+
 fetchUsers();
 
 async function fetchUsers() {
@@ -98,26 +112,26 @@ async function fetchUsers() {
     const res = await fetch(url, {
       headers: { "Authorization": "Bearer " + token }
     });
-    const data = await res.json();
-    if (!res.ok) { alert(data.message || "Failed to fetch users"); return; }
+
+    const data = await safeJson(res);
+    if (!res.ok) { alert(data.message || data.error || data.raw || "Failed to fetch users"); return; }
 
     const table = document.getElementById("userTable");
     table.innerHTML = "";
 
     if (!Array.isArray(data)) { alert("Users data is not an array!"); return; }
 
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const currentUserId = payload.userId;
+    const currentUserId = getCurrentUserIdFromToken();
 
     data.forEach(user => {
       const isOtherAdmin = user.role === 'ADMIN' && user._id !== currentUserId;
-      const isDeleted = user.isDeleted;
+      const isDeleted = !!user.isDeleted;
 
       // Build status badges
       let statusBadges = '';
       if (isDeleted) {
         statusBadges = '<span class="lib-badge lib-badge-danger">Archived</span>';
-      } else if (!user.isActive) {
+      } else if (user.isActive === false) {
         statusBadges = '<span class="lib-badge lib-badge-warning">Disabled</span>';
       } else {
         statusBadges = '<span class="lib-badge lib-badge-success">Active</span>';
@@ -130,22 +144,41 @@ async function fetchUsers() {
       } else if (isOtherAdmin) {
         actions = '<span class="lib-badge lib-badge-neutral">Protected</span>';
       } else {
-        actions = `
-          <button class="lib-btn lib-btn-success lib-btn-sm" onclick="updateUser('${user._id}')">Update</button>
-          <button class="lib-btn lib-btn-warning lib-btn-sm" onclick="toggleUserStatus('${user._id}')">
-            ${user.isActive ? 'Disable' : 'Enable'}
-          </button>
-          <button class="lib-btn lib-btn-danger lib-btn-sm" onclick="deleteUser('${user._id}')">Archive</button>
-        `;
+       actions = `
+
+  <button
+  id="btn-update-${user._id}"
+  class="lib-btn lib-btn-success lib-btn-sm"
+  onclick="editUser('${user._id}')"
+  ${user.isActive === false ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
+  Update
+</button>
+
+  <button 
+    class="lib-btn lib-btn-warning lib-btn-sm" 
+    onclick="toggleUserStatus('${user._id}')">
+    ${user.isActive === false ? 'Enable' : 'Disable'}
+  </button>
+
+  <button 
+    class="lib-btn lib-btn-danger lib-btn-sm" 
+    onclick="deleteUser('${user._id}')">
+    Archive
+  </button>
+`;
+
       }
-      
+
+      // store status in DOM so updateUser() can read it
+      const statusValue = isDeleted ? "ARCHIVED" : (user.isActive === false ? "DISABLED" : "ACTIVE");
+
       table.innerHTML += `
-        <tr style="${isDeleted ? 'opacity:0.5;' : (!user.isActive ? 'opacity:0.7;' : '')}">
+        <tr data-status="${statusValue}" style="${isDeleted ? 'opacity:0.5;' : (user.isActive === false ? 'opacity:0.7;' : '')}">
           <td>
-            <input type="text" id="username-${user._id}" value="${user.username}" class="lib-input" style="padding:0.4rem 0.6rem;" ${isOtherAdmin || isDeleted ? 'disabled' : ''} />
+            <input type="text" id="username-${user._id}" value="${user.username}" class="lib-input" style="padding:0.4rem 0.6rem;" ${isOtherAdmin || isDeleted ? 'disabled' : 'disabled'} />
           </td>
           <td>
-            <select id="role-${user._id}" class="lib-input" style="padding:0.4rem 0.6rem;" ${isOtherAdmin || isDeleted ? 'disabled' : ''}>
+            <select id="role-${user._id}" class="lib-input" style="padding:0.4rem 0.6rem;" ${isOtherAdmin || isDeleted ? 'disabled' : 'disabled'}>
               <option value="MEMBER" ${user.role === 'MEMBER' ? 'selected' : ''}>Member</option>
               <option value="LIBRARIAN" ${user.role === 'LIBRARIAN' ? 'selected' : ''}>Librarian</option>
               <option value="ADMIN" ${user.role === 'ADMIN' ? 'selected' : ''}>Admin</option>
@@ -167,44 +200,53 @@ async function fetchUsers() {
 }
 
 async function addUser() {
-    const uname = document.getElementById("newUsername").value;
-    const pass = document.getElementById("newPassword").value;
-    const r = document.getElementById("newRole").value;
+  const uname = document.getElementById("newUsername").value;
+  const pass = document.getElementById("newPassword").value;
+  const r = document.getElementById("newRole").value;
 
-    if(!uname || !pass) return alert("Please fill all fields");
+  if(!uname || !pass) return alert("Please fill all fields");
 
-    const res = await fetch("/api/users/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-        body: JSON.stringify({ username: uname, password: pass, role: r })
-    });
-    const data = await res.json();
-    if(res.ok) {
-        alert("User created successfully");
-        document.getElementById('addUserModal').classList.remove('active');
-        fetchUsers();
-    } else {
-        alert(data.message || "Failed to create user");
-    }
+  const res = await fetch("/api/users/add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+    body: JSON.stringify({ username: uname, password: pass, role: r })
+  });
+
+  const data = await safeJson(res);
+
+  if(res.ok) {
+    alert("User created successfully");
+    document.getElementById('addUserModal').classList.remove('active');
+    fetchUsers();
+  } else {
+    alert(data.message || data.error || data.raw || "Failed to create user");
+  }
 }
 
 async function toggleUserStatus(id) {
-    const res = await fetch("/api/users/" + id + "/toggle-status", {
-        method: "PUT",
-        headers: { "Authorization": "Bearer " + token }
-    });
-    const data = await res.json();
-    if(res.ok) { alert(data.message); fetchUsers(); }
-    else alert(data.message || "Action failed");
+  const res = await fetch("/api/users/" + id + "/toggle-status", {
+    method: "PUT",
+    headers: { "Authorization": "Bearer " + token }
+  });
+
+  const data = await safeJson(res);
+
+  if(res.ok) { alert(data.message); fetchUsers(); }
+  else alert(data.message || data.error || data.raw || "Action failed");
 }
 
 async function deleteUser(id) {
   if (!confirm("Archive this user? (They can be restored later)")) return;
+
   const res = await fetch("/api/users/" + id, {
     method: "DELETE",
     headers: { "Authorization": "Bearer " + token }
   });
-  if (!res.ok) { const data = await res.json(); alert(data.message || "Delete failed"); return; }
+
+  const data = await safeJson(res);
+
+  if (!res.ok) { alert(data.message || data.error || data.raw || "Delete failed"); return; }
+
   alert("User archived (soft-deleted)");
   fetchUsers();
 }
@@ -214,22 +256,115 @@ async function restoreUser(id) {
     method: "PUT",
     headers: { "Authorization": "Bearer " + token }
   });
-  if (res.ok) { alert("User restored!"); fetchUsers(); }
-  else { const data = await res.json(); alert(data.message || "Restore failed"); }
+
+  const data = await safeJson(res);
+
+  if (res.ok) { alert(data.message || "User restored!"); fetchUsers(); }
+  else { alert(data.message || data.error || data.raw || "Restore failed"); }
 }
 
-async function updateUser(id) {
-  const newUsername = document.getElementById("username-" + id).value;
-  const newRole = document.getElementById("role-" + id).value;
+
+function editUser(id) {
+  const usernameEl = document.getElementById("username-" + id);
+  const roleEl = document.getElementById("role-" + id);
+  const btn = document.getElementById("btn-update-" + id);
+
+  if (!usernameEl || !roleEl || !btn) return;
+
+  // Enable editing
+  usernameEl.disabled = false;
+  roleEl.disabled = false;
+
+  // Store originals so we can cancel/compare
+  usernameEl.dataset.original = usernameEl.value;
+  roleEl.dataset.original = roleEl.value;
+
+  // Switch button to Save
+  btn.textContent = "Save";
+  btn.onclick = () => saveUser(id);
+
+  // Optional: focus
+  usernameEl.focus();
+}
+
+async function saveUser(id) {
+  const usernameEl = document.getElementById("username-" + id);
+  const roleEl = document.getElementById("role-" + id);
+  const btn = document.getElementById("btn-update-" + id);
+
+  const newUsername = usernameEl.value.trim();
+  const newRole = roleEl.value;
+
+  const originalUsername = usernameEl.dataset.original || "";
+  const originalRole = roleEl.dataset.original || "";
+
+  // If nothing changed, just lock again
+  if (newUsername === originalUsername && newRole === originalRole) {
+    usernameEl.disabled = true;
+    roleEl.disabled = true;
+    btn.textContent = "Update";
+    btn.onclick = () => editUser(id);
+    alert("No changes made.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+
   const res = await fetch("/api/users/" + id, {
     method: "PUT",
     headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
     body: JSON.stringify({ username: newUsername, role: newRole })
   });
-  if (!res.ok) { const data = await res.json(); alert(data.message || "Update failed"); return; }
-  alert("User updated successfully");
+
+  const data = await safeJson(res);
+
+  if (!res.ok) {
+    btn.disabled = false;
+    btn.textContent = "Save";
+    alert(data.message || data.error || data.raw || "Update failed");
+    return;
+  }
+
+  alert("User updated successfully!");
+
+  // Lock again and restore button
+  usernameEl.disabled = true;
+  roleEl.disabled = true;
+
+  btn.disabled = false;
+  btn.textContent = "Update";
+  btn.onclick = () => editUser(id);
+
   fetchUsers();
 }
+
+
+
+// async function updateUser(id) {
+//   const newUsername = document.getElementById("username-" + id).value;
+//   const newRole = document.getElementById("role-" + id).value;
+
+//   const res = await fetch("/api/users/" + id, {
+//     method: "PUT",
+//     headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+//     body: JSON.stringify({ username: newUsername, role: newRole })
+//   });
+
+//   const data = await safeJson(res);
+
+//   if (!res.ok) {
+//     alert(data.message || data.error || data.raw || "Update failed");
+//     return;
+//   }
+
+//   // ✅ read current status from the row to make message accurate
+//   const row = document.getElementById("username-" + id)?.closest("tr");
+//   const status = row?.getAttribute("data-status") || "UNKNOWN";
+
+//   alert(`User details updated successfully. Current status: ${status}`);
+//   fetchUsers();
+// }
 </script>
 
 </body>

@@ -10,7 +10,8 @@ router.get("/", auth, roleCheck(["ADMIN", "LIBRARIAN"]), async (req, res) => {
     const { role, includeDeleted } = req.query;
     let query = { isDeleted: false }; // hide soft-deleted by default
     if (includeDeleted === "true") delete query.isDeleted;
-    if (role) query.role = role;
+    if (role) query.role = new RegExp("^" + role + "$", "i");
+
 
     const users = await User.find(query).select("-password");
     res.json(users);
@@ -86,7 +87,6 @@ router.put("/:id/restore", auth, adminOnly, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 router.put("/:id", auth, adminOnly, async (req, res) => {
   try {
     const userIdToUpdate = req.params.id;
@@ -97,10 +97,10 @@ router.put("/:id", auth, adminOnly, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    
-    if (req.user.userId === userIdToUpdate && role !== userToUpdate.role) {
+    // ✅ NEW PROTECTION
+    if (userToUpdate.isActive === false) {
       return res.status(400).json({
-        message: "You cannot change your own role."
+        message: "Cannot update a disabled user. Please enable the user first."
       });
     }
 

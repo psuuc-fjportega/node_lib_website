@@ -13,6 +13,7 @@
   <div class="nav-links">
     <a href="/librarian.html">Dashboard</a>
     <span class="user-info" id="userDisplay"></span>
+    <a href="#" id="logoutBtn">Logout</a>
   </div>
 </nav>
 
@@ -29,12 +30,14 @@
         <option>Loading users...</option>
       </select>
     </div>
+
     <div class="lib-form-group">
       <label>Select Book</label>
       <select id="bookSelect" class="lib-input">
         <option>Loading books...</option>
       </select>
     </div>
+
     <button class="lib-btn lib-btn-primary" onclick="issueBook()" style="width:100%">Issue Book</button>
   </div>
 </div>
@@ -45,62 +48,114 @@
 
 <script>
 const token = localStorage.getItem("token");
-if (!token) window.location.href = "/login.html";
-
+const role = localStorage.getItem("role");
 const username = localStorage.getItem("username");
-document.getElementById("userDisplay").textContent = username ? `👤 ${username}` : "";
+
+if (!token) window.location.href = "/login.html";
+if (role && role !== "LIBRARIAN" && role !== "ADMIN") {
+  alert("Access denied.");
+  window.location.href = "/member.html";
+}
+
+document.getElementById("userDisplay").textContent = username ? `👤 ${username} (${role})` : "";
+
+document.getElementById("logoutBtn").addEventListener("click", (e) => {
+  e.preventDefault();
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  localStorage.removeItem("username");
+  window.location.href = "/login.html";
+});
+
+async function safeJson(res) {
+  const raw = await res.text();
+  try { return raw ? JSON.parse(raw) : {}; } catch { return { raw }; }
+}
 
 async function loadData() {
-    try {
-        const bookRes = await fetch("/api/books");
-        const books = await bookRes.json();
-        const bookSelect = document.getElementById("bookSelect");
-        bookSelect.innerHTML = "";
-        books.forEach(book => {
-            if (book.availableCopies > 0) {
-                bookSelect.innerHTML += `<option value="${book._id}">${book.title} (Available: ${book.availableCopies})</option>`;
-            }
-        });
-        if(!bookSelect.innerHTML) bookSelect.innerHTML = '<option>No books available</option>';
+  const bookSelect = document.getElementById("bookSelect");
+  const userSelect = document.getElementById("userSelect");
 
-        const userRes = await fetch("/api/users?role=MEMBER", {
-             headers: { "Authorization": "Bearer " + token }
-        }); 
-        
-        if (userRes.ok) {
-             const users = await userRes.json();
-             const userSelect = document.getElementById("userSelect");
-             userSelect.innerHTML = "";
-             users.forEach(user => {
-                 if (user.role === 'MEMBER') {
-                    userSelect.innerHTML += `<option value="${user._id}">${user.username}</option>`;
-                 }
-             });
-        } else {
-             document.getElementById("userSelect").innerHTML = "<option>Error loading users</option>";
+  bookSelect.innerHTML = "<option>Loading books...</option>";
+  userSelect.innerHTML = "<option>Loading users...</option>";
+
+  try {
+    // ✅ books WITH auth header
+    const bookRes = await fetch("/api/books", {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    const bookData = await safeJson(bookRes);
+
+    if (!bookRes.ok) {
+      bookSelect.innerHTML = `<option>Failed to load books (${bookRes.status})</option>`;
+      console.log("Books error:", bookRes.status, bookData);
+    } else {
+      bookSelect.innerHTML = "";
+      bookData.forEach(book => {
+        if (book.availableCopies > 0) {
+          bookSelect.innerHTML += `<option value="${book._id}">${book.title} (Available: ${book.availableCopies})</option>`;
         }
-    } catch (err) {
-        console.error(err);
+      });
+      if (!bookSelect.innerHTML) bookSelect.innerHTML = "<option>No books available</option>";
     }
+
+    // ✅ users WITH auth header
+    const userRes = await fetch("/api/users?role=MEMBER", {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    const userData = await safeJson(userRes);
+
+    if (!userRes.ok) {
+      userSelect.innerHTML = `<option>Failed to load users (${userRes.status})</option>`;
+      console.log("Users error:", userRes.status, userData);
+      alert(`Users load failed (${userRes.status}): ${userData.message || userData.error || userData.raw || "Unknown error"}`);
+      return;
+    }
+
+    userSelect.innerHTML = "";
+    userData.forEach(user => {
+      userSelect.innerHTML += `<option value="${user._id}">${user.username}</option>`;
+    });
+
+    if (!userSelect.innerHTML) userSelect.innerHTML = "<option>No members found</option>";
+
+  } catch (err) {
+    console.error(err);
+    bookSelect.innerHTML = "<option>Error loading books</option>";
+    userSelect.innerHTML = "<option>Error loading users</option>";
+  }
 }
 
 async function issueBook() {
-    const userId = document.getElementById("userSelect").value;
-    const bookId = document.getElementById("bookSelect").value;
+  const userId = document.getElementById("userSelect").value;
+  const bookId = document.getElementById("bookSelect").value;
 
-    const res = await fetch("/api/borrows/issue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-        body: JSON.stringify({ userId, bookId })
-    });
+  if (!userId || userId.includes("Failed") || userId.includes("Loading")) {
+    alert("Please select a valid member.");
+    return;
+  }
+  if (!bookId || bookId.includes("Failed") || bookId.includes("Loading")) {
+    alert("Please select a valid book.");
+    return;
+  }
 
-    const data = await res.json();
-    if (res.ok) {
-        alert("Book issued successfully! Due Date: " + new Date(data.dueDate).toLocaleDateString());
-        loadData();
-    } else {
-        alert(data.message || "Failed to issue book");
-    }
+  const res = await fetch("/api/borrows/issue", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({ userId, bookId })
+  });
+
+  const data = await safeJson(res);
+
+  if (res.ok) {
+    alert("Book issued successfully! Due Date: " + new Date(data.dueDate).toLocaleDateString());
+    loadData();
+  } else {
+    alert(`Failed to issue (${res.status}): ${data.message || data.error || data.raw || "Unknown error"}`);
+  }
 }
 
 loadData();

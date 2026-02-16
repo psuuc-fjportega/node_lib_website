@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Librarian Dashboard — Urdaneta City Library</title>
-<link rel="stylesheet" href="/library.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Librarian Dashboard — Urdaneta City Library</title>
+  <link rel="stylesheet" href="/library.css">
 </head>
 <body>
 
@@ -20,6 +20,11 @@
   <div class="lib-page-header">
     <h1>📖 Librarian Dashboard</h1>
     <div class="breadcrumb">Manage books and assist members</div>
+
+    <!-- Back button (only shows for ADMIN) -->
+    <button id="backToAdminBtn" style="display:none; margin-top:10px;">
+      ← Back to Admin Dashboard
+    </button>
   </div>
 
   <div class="lib-dash-grid">
@@ -56,6 +61,8 @@ if (!token) {
   alert("You must log in first!");
   window.location.href = "/login.html";
 }
+
+// Allow LIBRARIAN and ADMIN
 if (role && role !== "LIBRARIAN" && role !== "ADMIN") {
   alert("This page is for Librarians only.");
   window.location.href = "/member.html";
@@ -70,6 +77,15 @@ document.getElementById("logoutBtn").addEventListener("click", (e) => {
   localStorage.removeItem("username");
   window.location.href = "/login.html";
 });
+
+// Show back button only if ADMIN
+if (role === "ADMIN") {
+  const backBtn = document.getElementById("backToAdminBtn");
+  backBtn.style.display = "inline-block";
+  backBtn.addEventListener("click", () => {
+    window.location.href = "/admin.html";
+  });
+}
 </script>
 
 </body>

@@ -10,6 +10,8 @@ const {
   getUserBorrows,
 } = require("../controllers/borrow.controller");
 
+const { approveBorrow, rejectBorrow } = require("../controllers/borrow.controller");
+
 // Members/Librarians/Admins can borrow books
 router.post("/", auth, roleCheck(["MEMBER", "LIBRARIAN", "ADMIN"]), borrowBook);
 
@@ -24,6 +26,10 @@ router.put("/renew/:id", auth, roleCheck(["MEMBER", "ADMIN", "LIBRARIAN"]), rene
 
 // Update Status: Lost/Damaged (Librarian/Admin)
 router.put("/status/:id", auth, roleCheck(["ADMIN", "LIBRARIAN"]), updateBorrowStatus);
+
+// Approve/Reject borrow requests (Librarian/Admin)
+router.put("/approve/:id", auth, roleCheck(["ADMIN", "LIBRARIAN"]), approveBorrow);
+router.put("/reject/:id", auth, roleCheck(["ADMIN", "LIBRARIAN"]), rejectBorrow);
 
 // Admins and Librarians can view all borrows
 router.get("/", auth, roleCheck(["ADMIN", "LIBRARIAN"]), getAllBorrows);
